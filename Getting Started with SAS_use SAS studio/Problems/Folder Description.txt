@@ -1,0 +1,7 @@
+The files in this folder are all related to the end-of-chapter problems.
+
+The file: Programs for Problem sets.sas contains programs that are used for some of the chapter problems.
+
+The other files are data files that you will probably want to place in a folder.  The solutions for many 
+problems assume that you made a folder caller Problems in Studio.
+

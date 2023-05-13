@@ -1,0 +1,6 @@
+The file Programs_ODA.sas contains all the programs used in this book.
+
+There are also some data files that should go in the same folder.
+
+Place them in a folder on your hard drive and upload them to a folder in SAS 
+Studio. The book used a folder called MyBookFiles for all of these files.

@@ -1,0 +1,6 @@
+103-34-7654	Daniel	Boone	M	56	PA
+676-10-1020	Fred	Flintstone	M
+454-30-9999	Tracie	Wortenberg	F	34	NC
+102-87-8374	Jason	Kid	M	23	NJ
+888-21-1234	Patrice	Marcella	F	.	TX
+788-39-1222	Margaret	Mead	F	77	PA
