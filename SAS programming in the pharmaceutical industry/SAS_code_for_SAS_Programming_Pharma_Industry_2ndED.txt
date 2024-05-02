@@ -1,0 +1,3928 @@
+**** PROGRAM 1.1;
+libname trialdata "c:\mytrial\sasdata";
+libname library "c:\mytrial\mysasformats";
+libname otherdata "c:\someotherdata";
+
+
+PROGRAM 1.2;
+%macro mylibs;
+  libname trialdata "c:\mytrial\sasdata";
+  libname library "c:\mytrial\mysasformats";
+  libname otherdata "c:\someotherdata";
+%mend mylibs;
+
+%mylibs
+
+
+**** PROGRAM 1.3;
+data aes;
+  set aes;
+    by subjectid;
+    where aeyn = "YES";
+run;
+
+
+**** PROGRAM 1.4;
+data aes;
+  set aes;
+    by subjectid;
+      
+      **** PARENT-CHILD WARNING;
+      if (aeyn ne "YES" and aetext ne "") or
+         (aeyn = "YES" and aetext = "") then
+         put "WARN" "ING: ae parent-child bug " aeyn= aetext=;
+        
+      **** GET AES;
+      if aeyn = "YES" or aetext ne "";
+run;
+
+
+**** PROGRAM 1.5;
+if a > b then
+  a + b;
+else if a < b then
+  a - b;
+
+
+**** PROGRAM 1.6;
+if a > b then
+  a = a + b;
+else if a < b then
+  a = a - b;
+else
+  put "How does a relate to b? " a= b=;
+
+
+**** PROGRAM 1.7;
+select;
+  when(a > b) a = a + b;
+  when(a < b) a = a - b;
+  otherwise put " How does a relate to b? " a= b=;
+end;
+
+
+**** PROGRAM 1.8;
+data &&some&i;
+  &getfile &subopt;
+
+     &subset;
+     %makecod
+%run
+
+
+**** PROGRAM 1.9;
+proc sort
+  data = dm;
+    by usubjid;
+run;
+
+**** SAS MACRO TO PRINT MY DEMOGRAPHIC DATA BY PATIENT;
+%macro printpt(usubjid);
+  proc print
+    data = dm;
+    where usubjid = “&usubjid”;
+    var usubjid age sex race;
+  run;
+%mend printpt;
+
+%printpt(101-001)
+%printpt(101-002)
+%printpt(101-003)
+
+**** PROGRAM 1.10;
+proc sort
+  data = dm; 
+    by usubjid;
+run;
+
+**** PRINT MY DEMOGRAPHIC DATA BY PATIENT;
+proc print
+  data = dm;
+    by usubjid;
+    var usubjid age sex race;
+run;
+
+
+**** PROGRAM 2.1;
+data adsl;
+  set adsl;
+
+    if . < age <= 18 then
+      agegr1n = 1;
+    else if 18 < age <= 60 then
+      agegr1n = 2;
+    else if 60 < age then
+      agegr1n = 3;
+run;
+
+
+**** PROGRAM 2.2;
+data AE;
+input USUBJID $ 1-7 AETERM $ 9-41;
+datalines;
+100-101 HEDACHE
+100-105 HEADACHE
+100-110 MYOCARDIAL INFARCTION
+200-004 MI
+300-023 BROKEN LEG
+400-010 HIVES
+500-001 LIGHTHEADEDNESS/FACIAL LACERATION
+;
+run;
+
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program2.2.pdf';
+
+proc freq 
+   data = ae;
+   tables aeterm;
+run;
+
+ods pdf close;
+
+
+
+**** PROGRAM 2.3;
+data ae;
+label USUBJID  = "Unique Subject Identifier"
+      AEPTCD   = "Preferred Term Code"
+      AETERM   = "Reported Term for the Adverse Event"
+      AEDECOD  = "Dictionary-Derived Term";
+input USUBJID $ 1-7 AEPTCD $ 9-16 
+      AETERM $ 18-38 AEDECOD $ 40-60;
+datalines;
+100-101 10019211 HEDACHE               HEADACHE
+100-105 10019211 HEADACHE              HEADACHE
+100-110 10028596 MYOCARDIAL INFARCTION MYOCARDIAL INFARCTION
+200-004 10028596 MI                    MYOCARDIAL INFARCTION
+300-023 10061599 BROKEN LEG            LOWER LIMB FRACTURE
+400-010 10046735 HIVES                 URTICARIA
+500-001 10013573 LIGHTHEADEDNESS       DIZZINESS
+500-001 10058818 FACIAL LACERATION     SKIN LACERATION
+;
+run;
+
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program2.3.pdf';
+
+proc freq
+   data = ae;
+   tables aedecod;
+run;
+
+ods pdf close;
+
+
+**** PROGRAM 2.4;
+data endstudy;
+  set endstudy;
+  
+  if subjid = “101-1002” then
+    discterm = “Death”;
+run;
+
+
+**** PROGRAM 2.5;
+data endstudy;
+  set endstudy;
+
+  **** HARDCODE APPROVED BY DR. NAME AT SPONSOR ON 02/02/2012;
+  if subjid = "101-1002" and "&sysdate" <= "01MAY2012"d then
+    do;
+      discterm = "Death";
+      put "Subject " subjid "hardcoded to termination reason " discterm;
+    end;
+run;
+
+
+**** PROGRAM 3.1;
+proc sql;
+   connect to oracle as oracletables
+          (user = USERID  orapw = PASSWORD  path = "INSTANCE");
+	
+   create table AE as
+      select * from connection to oracletables
+      (select * from AEORACLETABLE );
+
+   disconnect from oracletables;
+quit;
+
+
+**** PROGRAM 3.2;
+proc sql;
+   connect to oracle as oracletables
+     (user = USERID  orapw = PASSWORD  path ="INSTANCE");
+
+   create table library.AE as
+      select * from connection to oracle_tables
+      (select usubjid, aeterm, aestdtc, aedecod
+         from AEORACLETABLE 
+         where query_clean=”YES”);
+
+   disconnect from oracletables;
+quit;
+
+
+**** PROGRAM 3.3;
+libname oratabs oracle user=USERNAME
+      orapw = PASSWORD  path = "@INSTANCE"  schema = TRIALNAME;
+
+data adverse;
+   set oratabs.AEORACLETABLE;
+      where query_clean = “YES”;
+      keep usubjid aeterm aestdtc aedecod; 
+run;
+
+
+**** PROGRAM 3.4;
+PROC IMPORT OUT= WORK.LABNORM 
+            DATAFILE= "C:normal_ranges.txt" 
+            DBMS=DLM REPLACE;
+            DELIMITER='7C'x; 
+            GETNAMES=YES;
+            DATAROW=2; 
+RUN;
+
+
+**** PROGRAM 3.5;
+proc format;
+	value $gender "F" = "Female"
+	              "M" = "Male";
+run;
+ 
+data labnorm;
+	infile 'C:\normal_ranges.txt' delimiter = '|' DSD MISSOVER firstobs=2;
+
+    informat Lab_Test $20. 
+             Units $9. 
+             Gender $1. ;
+
+	format Lab_Test $20.
+    	   Units $9. 
+           Gender $gender.;
+
+	input  Lab_Test $
+           Units $
+           Gender $
+           Low_Age
+           High_Age
+           Low_Normal
+           High_Normal;
+
+
+	label Lab_Test    = "Laboratory Test"
+	      Units       = "Lab Units"
+  	      Gender      = "Gender"
+	      Low_Age     = "Lower Age Range"
+	      High_Age    = "Higher Age Range"
+	      Low_Normal  = "Low Normal Lab Value Range"
+	      High_Normal = "High Normal Lab Value Range";
+run;
+
+
+**** PROGRAM 3.6;
+libname xlsfile EXCEL "C:\normal_ranges.xlsx";
+proc contents 
+   data = xlsfile._all_;
+run;
+  	
+proc print 
+   data = XLSFILE.'normal_ranges$'n;
+run;
+
+
+**** PROGRAM 3.7;
+libname accfile ACCESS "C:\normal_ranges.mdb"; 
+
+proc contents 
+   data = accfile._all_;
+run;
+  	
+proc print 
+   data = accfile.normal_ranges;
+run;
+
+
+**** PROGRAM 3.8;
+PROC IMPORT OUT= WORK.normal_ranges 
+            DATAFILE= "C:\normal_ranges.xlsx" 
+            DBMS=EXCEL REPLACE;
+            RANGE="normal_ranges$"; 
+            GETNAMES=YES;
+            MIXED=NO;
+            SCANTEXT=YES;
+            USEDATE=YES;
+            SCANTIME=YES;
+RUN;
+
+
+**** PROGRAM 3.9;
+**** OBTAIN AVAILABLE WORKSHEET NAMES FROM EXCEL FILE;
+proc sql;      
+   connect to excel (path = "C:\normal_ranges.xlsx");
+   select table_name from connection to excel(jet::tables); 
+quit;
+
+**** GO GET NORMAL_RANGES WORKSHEET FROM EXCEL FILE;
+proc sql;
+   connect to EXCEL (path ="C:\normal_ranges.xlsx" header = yes    
+           mixed = yes);
+   create table normal_ranges as
+      select * from connection to excel
+      (select * from [normal_ranges$]);
+   disconnect from excel; 
+quit; 
+
+
+**** PROGRAM 3.10;
+**** OBTAIN AVAILABLE TABLE NAMES FROM ACCESS FILE;
+proc sql;      
+  connect to access (path = "C:\normal_ranges.mdb");
+  select table_name from connection to access(jet::tables); 
+quit;
+
+**** GO GET NORMAL_RANGES WORKSHEET FROM ACCESS FILE;
+proc sql;
+   connect to access (path="C:\normal_ranges.mdb");
+   create table normal_ranges as
+      select * from connection to access
+      (select * from normal_ranges);
+   disconnect from access; 
+quit;
+
+
+**** PROGRAM 3.11;
+filename  normals 'C:\normal_ranges.xml';
+libname   normals xml xmlmap=XML_MAP;
+filename  XML_MAP 'C:\xml_map.map';
+
+
+options nodate nonumber missing = ' ';
+ods pdf style=htmlblue file='program3.11.pdf';
+
+proc contents 
+   data = normals.normals; 
+run;
+
+proc print 
+   data = normals.normals; 
+run;
+
+ods pdf close;
+
+
+PROGRAM 3.12;
+libname sasv5 XPORT "C:\cstSampleLibrary\cdisc-crtdds-1.0-1.5\transport\dm.xpt";
+
+proc copy
+  in=sasv5
+  out=work;
+  select dm;
+run;
+
+
+**** PROGRAM 4.1;
+**** INPUT SAMPLE CHOLESTEROL DATA AS SDTM LB DOMAIN.;
+data LB;
+label USUBJID  = 'Unique Subject Identifier'
+      LBDTC    = 'Date/Time of Specimen Collection'
+      LBTESTCD = 'Lab Test or Examination Short Name'
+      LBSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 LBDTC $ 5-14 LBTESTCD $ LBSTRESN; 
+datalines;
+101 2003-09-05 HDL  48
+101 2003-09-05 LDL  188
+101 2003-09-05 TRIG 108
+101 2003-09-06 HDL  49
+101 2003-09-06 LDL  185
+101 2003-09-06 TRIG .
+102 2003-10-01 HDL  54
+102 2003-10-01 LDL  200
+102 2003-10-01 TRIG 350
+102 2003-10-02 HDL  52
+102 2003-10-02 LDL  .
+102 2003-10-02 TRIG 360
+103 2003-11-10 HDL  .
+103 2003-11-10 LDL  240
+103 2003-11-10 TRIG 900
+103 2003-11-11 HDL  30
+103 2003-11-11 LDL  .
+103 2003-11-11 TRIG 880
+103 2003-11-12 HDL  32
+103 2003-11-12 LDL  .
+103 2003-11-12 TRIG .
+103 2003-11-13 HDL  35
+103 2003-11-13 LDL  289
+103 2003-11-13 TRIG 930
+; 
+run;
+
+**** INPUT SAMPLE PILL DOSING DATA AS SDTM EX DOMAIN.;
+data EX;
+label USUBJID  = 'Unique Subject Identifier'
+      EXSTDTC  = 'Start Date/Time of Treatment';
+input USUBJID $ 1-3 EXSTDTC $ 5-14; 
+datalines;
+101 2003-09-07
+102 2003-10-07
+103 2003-11-13
+;
+run;
+
+**** JOIN CHOLESTEROL AND DOSING DATA INTO ADLB ANALYSIS DATASET
+**** AND CREATE WINDOWING VARIABLES;
+proc sql;
+    create table ADLB as
+    select LB.USUBJID, LBDTC, LBTESTCD as PARAMCD, LBSTRESN as AVAL, 
+           EXSTDTC, input(LBDTC,yymmdd10.) as ADT format=yymmdd10.,
+           case
+             when -5 <= (input(LBDTC,yymmdd10.) - input(EXSTDTC,yymmdd10.)) <= -1 and LBSTRESN ne . then 'YES'
+             else 'NO'
+           end as within5days
+	from LB as LB, EX as EX
+	where LB.USUBJID = EX.USUBJID
+	order by USUBJID, LBTESTCD, within5days, ADT;
+quit;
+
+**** DEFINE ABLFL BASELINE FLAG;
+data ADLB;
+    set ADLB;
+        by USUBJID PARAMCD within5days ADT;
+
+        **** FLAG LAST RECORD WITHIN WINDOW AS BASELINE RECORD;
+        if last.within5days and within5days='YES' then
+            ABLFL = 'Y';
+
+        label ABLFL    = 'Baseline Record Flag'
+              PARAMCD  = 'Parameter Code'
+              ADT      = 'Analysis Date'
+              AVAL     = 'Analysis Value';
+
+        drop within5days;
+run;
+
+proc sort
+    data=ADLB;
+        by USUBJID PARAMCD ADT;
+run;
+
+ods html image_dpi=300 style=htmlblue file='program4.1.html';
+proc print data=adlb;
+var usubjid paramcd aval adt exstdtc ablfl;
+run;
+ods html close;
+
+
+**** PROGRAM 4.2;
+if adt < rfstdt then
+  ADY = adt – rfstdt;
+else if adt >= rfstdt then
+  ADY = adt – rfstdt + 1;
+
+
+**** PROGRAM 4.3;
+**** INPUT SAMPLE HEMOGLOBIN DATA AS SDTM LB DOMAIN.;
+data LB;
+label USUBJID  = 'Unique Subject Identifier'
+      LBDTC    = 'Date/Time of Specimen Collection'
+      LBTESTCD = 'Lab Test or Examination Short Name'
+      LBSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 LBTESTCD $ 5-7 LBDTC $ 9-18 LBSTRESN; 
+datalines;
+101 HGB 2013-06-15 1.0
+101 HGB 2013-06-16 1.1
+101 HGB 2013-07-15 1.2
+101 HGB 2013-07-21 1.3
+101 HGB 2013-08-14 1.4
+101 HGB 2013-08-16 1.5
+101 HGB 2014-06-01 1.6
+101 HGB 2014-06-25 1.7
+101 HGB 2015-06-10 1.8
+101 HGB 2015-06-15 1.9
+;
+run;
+
+
+**** INPUT SAMPLE DOSING DATA AS SDTM EX DOMAIN.;
+data EX;
+label USUBJID  = 'Unique Subject Identifier'
+      EXSTDTC  = 'Start Date/Time of Treatment';
+input USUBJID $ 1-3 EXSTDTC $ 5-14; 
+datalines;
+101 2013-06-17
+;
+run;
+
+**** SORT LAB DATA FOR MERGE WITH DOSING;
+proc sort
+  data=lb;
+    by usubjid;
+run;
+
+**** SORT DOSING DATA FOR MERGE WITH LABS.;
+proc sort
+  data=ex;
+    by usubjid;
+run;
+
+**** FORMATS FOR DEFINING AWVISIT AND AWRANGE;
+proc format;
+  value avisit
+    -1 = 'Baseline'
+    30 = 'Month 1'
+    60 = 'Month 2'
+    365 = 'Year 1'
+    730 = 'Year 2';
+  value awrange
+    -1  = 'Up to ADY -1     '
+    30  = '25 <= ADY <= 35  '
+    60  = '55 <= ADY <= 65  '
+    365 = '350 <= ADY <= 380'
+    730 = '715 <= ADY <= 745';
+run; 
+
+**** MERGE LAB DATA WITH DOSING DATE. CALCULATE STUDY DAY AND
+**** DEFINE VISIT WINDOWS BASED ON STUDY DAY.;
+data ADLB;
+  merge lb(in = inlab)  
+        ex(keep = usubjid exstdtc);
+    by usubjid;
+
+    **** KEEP RECORD IF IN LAB AND RESULT IS NOT MISSING.;
+    if inlab and lbstresn ne .;
+      
+    ADT = input(lbdtc,yymmdd10.);
+    format ADT yymmdd10.;
+    PARAMCD = lbtestcd;
+    AVAL = lbstresn;
+
+    **** CALCULATE STUDY DAY.;
+    if adt < input(exstdtc,yymmdd10.) then
+      ADY = adt - input(exstdtc,yymmdd10.);
+    else if adt >= input(exstdtc,yymmdd10.) then
+      ADY = adt - input(exstdtc,yymmdd10.) + 1;
+
+    **** SET VISIT WINDOWS AND TARGET DAY AS THE MIDDLE OF THE 
+         WINDOW.;
+    if . < ady < 0 then
+      AWTARGET = -1;
+    else if 25 <= ady <= 35 then
+      AWTARGET = 30;
+    else if 55 <= ady <= 65 then
+      AWTARGET = 60;
+    else if 350 <= ady <= 380 then
+      AWTARGET = 365;
+    else if 715 <= ady <= 745 then
+      AWTARGET = 730;
+
+	  AWRANGE = left(put(awtarget,awrange.));
+	  AVISIT = left(put(awtarget,avisit.));
+
+    **** CALCULATE OBSERVATION DISTANCE FROM TARGET AND
+    **** ABSOLUTE VALUE OF THAT DIFFERENCE.;
+    AWTDIFF = abs(ady - awtarget);      
+run;
+
+**** SORT DATA BY DECREASING ABSOLUTE DIFFERENCE AND ACTUAL 
+**** DIFFERENCE WITHIN A VISIT WINDOW.;
+proc sort
+  data=ADLB;
+    by USUBJID LBTESTCD AWTARGET AWTDIFF ADY;
+run;
+
+**** SELECT THE RECORD CLOSEST TO THE TARGET AS THE RECORD OF 
+**** CHOICE TIES ON BOTH SIDES OF THE TARGET GO TO THE EARLIER 
+**** OF THE TWO OBSERVATIONS.;
+data adlb;
+  set ADLB;
+    by USUBJID LBTESTCD AWTARGET AWTDIFF ADY;
+
+    if first.awtarget and awtarget ne . then
+        ANL01FL = 'Y';          
+
+    if avisit = 'DAY 0' and anl01fl = 'Y' then
+        ABLFL = 'Y';
+
+    keep USUBJID PARAMCD ADT EXSTDTC ADY AVISIT AWTARGET ADY
+         AWTDIFF AWRANGE ANL01FL; 
+
+    label ABLFL    = 'Baseline Record Flag'
+          PARAMCD  = 'Parameter Code'
+          ADT      = 'Analysis Date'
+          AVAL     = 'Analysis Value'
+          AWTARGET = 'Analysis Window Target'
+          AWRANGE  = 'Analysis Window Valid Relative Range'
+          AVISIT   = 'Analysis Visit'
+          ADY      = 'Analysis Relative Day'
+          AWTDIFF  = 'Analysis Window Diff from Target'
+          ANL01FL  = 'Analysis Record Flag 01';
+run;
+
+proc sort
+  data=ADLB;
+    by USUBJID PARAMCD ADY;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.3.html';
+proc print data=adlb;
+var usubjid paramcd adt exstdtc ady avisit awtarget ady awtdiff awrange anl01fl; 
+run;
+ods html close;
+
+
+**** PROGRAM 4.4;
+**** INPUT SAMPLE SYSTOLIC BLOOD PRESSURE VALUES AS SDTM VS 
+     DOMAIN.;
+data VS;
+label USUBJID  = 'Unique Subject Identifier'
+      VSTESTCD = 'Vitals Signs Test Short Name'
+      VISITNUM = 'Visit Number'
+      VSSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 VSTESTCD $ 5-7 VISITNUM VSSTRESN; 
+datalines;
+101 SBP 1 160
+101 SBP 2 150
+101 SBP 3 140
+101 SBP 4 130
+101 SBP 5 120
+202 SBP 1 141
+202 SBP 2 151
+202 SBP 3 161
+202 SBP 4 171
+202 SBP 5 181
+;
+run;
+
+**** TRANSPOSE THE NORMALIZED SBP VALUES TO A FLAT STRUCTURE;
+proc transpose
+  data=vs
+  out=sbpflat
+  prefix=VISIT;
+    by usubjid;
+	id visitnum;
+    var vsstresn;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.4.html';
+proc print
+data=sbpflat;
+run;
+ods html close;
+
+
+**** PROGRAM 4.5;
+**** INPUT SAMPLE SYSTOLIC BLOOD PRESSURE VALUES AS SDTM VS 
+     DOMAIN.;
+data VS;
+label USUBJID  = 'Unique Subject Identifier'
+      VSTESTCD = 'Vitals Signs Test Short Name'
+      VISITNUM = 'Visit Number'
+      VSSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 VSTESTCD $ 5-7 VISITNUM VSSTRESN; 
+datalines;
+101 SBP 1 160
+101 SBP 3 140
+101 SBP 4 130
+101 SBP 5 120
+202 SBP 1 141
+202 SBP 2 151
+202 SBP 3 161
+202 SBP 4 171
+202 SBP 5 181
+;
+run;
+
+
+**** TRANSPOSE THE NORMALIZED SBP VALUES TO A FLAT STRUCTURE;
+proc transpose
+  data=vs
+  out=sbpflat
+  prefix=VISIT;
+    by usubjid;
+    var vsstresn;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.5a.html';
+proc print
+data=sbpflat;
+var usubjid _name_ _label_ visit1 visit2 visit3 visit4 visit5;
+run;
+ods html close;
+
+
+
+
+**** TRANSPOSE THE NORMALIZED SBP VALUES TO A FLAT STRUCTURE;
+proc transpose
+  data=vs
+  out=sbpflat
+  prefix=VISIT;
+    by usubjid;
+    id visitnum;
+    var vsstresn;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.5b.html';
+proc print
+data=sbpflat;
+var usubjid _name_ _label_ visit1 visit2 visit3 visit4 visit5;
+run;
+ods html close;
+
+
+**** INPUT SAMPLE SYSTOLIC BLOOD PRESSURE VALUES AS SDTM VS DOMAIN.;
+data VS;
+label USUBJID  = 'Unique Subject Identifier'
+      VSTESTCD = 'Vitals Signs Test Short Name'
+      VISITNUM = 'Visit Number'
+      VSSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 VSTESTCD $ 5-7 VISITNUM VSSTRESN; 
+datalines;
+101 SBP 1 160
+101 SBP 3 140
+101 SBP 4 130
+101 SBP 5 120
+202 SBP 1 141
+202 SBP 3 161
+202 SBP 4 171
+202 SBP 5 181
+;
+run;
+
+
+**** TRANSPOSE THE NORMALIZED SBP VALUES TO A FLAT STRUCTURE;
+proc transpose
+  data=vs
+  out=sbpflat
+  prefix=VISIT;
+    by usubjid;
+    id visitnum;
+    var vsstresn;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.5c.html';
+proc print
+data=sbpflat;
+var usubjid _name_ _label_ visit1 visit3 visit4 visit5;
+run;
+ods html close;
+
+
+**** PROGRAM 4.6;
+**** INPUT SAMPLE SYSTOLIC BLOOD PRESSURE VALUES AS SDTM VS DOMAIN.;
+data VS;
+label USUBJID  = 'Unique Subject Identifier'
+      VSTESTCD = 'Vitals Signs Test Short Name'
+      VISITNUM = 'Visit Number'
+      VSSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ 1-3 VSTESTCD $ 5-7 VISITNUM VSSTRESN; 
+datalines;
+101 SBP 1 160
+101 SBP 3 140
+101 SBP 4 130
+101 SBP 5 120
+202 SBP 1 141
+202 SBP 3 161
+202 SBP 4 171
+202 SBP 5 181
+;
+run;
+
+
+**** TRANSPOSE THE NORMALIZED SBP VALUES TO A FLAT STRUCTURE;
+proc sort
+  data=vs;
+  	by usubjid;
+run;
+
+data sbpflat;
+  set vs;
+  	by usubjid;
+
+	keep usubjid visit1-visit5;
+	retain visit1-visit5;
+	array sbps {5} visit1-visit5;
+
+	if first.usubjid then
+		do i = 1 to 5;
+			sbps{i} = .;
+		end;
+
+	sbps{visitnum} = vsstresn;
+
+	if last.usubjid;
+run;
+
+ods html image_dpi=300 style=htmlblue file='program4.6.html';
+proc print
+data=sbpflat;
+var usubjid visit1 visit2 visit3 visit4 visit5;
+run;
+ods html close;
+
+
+**** PROGRAM 4.7;
+**** DEATH ANALYSIS DATASET ADDEATH;
+data ADDEATH;
+label USUBJID  = 'Unique Subject Identifier'
+      TRTP     = 'Planned Treatment'
+      PARAM    = 'Parameter'
+      AVAL     = 'Analysis Value';
+PARAM = 'Subject Died';
+input USUBJID $ AVAL TRTP $ @@;
+datalines;
+101 0 a 102 0 b 103 1 a 104 0 b 105 1 a 106 0 b 107 1 a 108 0 b
+109 1 a 110 1 b 111 1 a 112 1 b 113 0 a 114 0 b 115 1 a 116 0 b
+117 1 a 118 0 b 119 1 a 120 1 b 121 1 a 122 1 b 123 1 a 124 1 b
+125 1 a 126 0 b 127 1 a 128 0 b 129 1 a 130 0 b 131 1 a 132 1 b
+133 1 a 134 1 b 135 1 a 136 1 b 137 1 a 138 1 b 139 1 a 140 1 b
+201 0 b 202 1 a 203 0 b 204 0 a 205 1 b 206 0 a 207 1 b 208 1 a
+209 1 b 210 1 a 211 1 b 212 1 a 213 0 b 214 1 a 215 0 b 216 0 a
+217 1 b 218 0 a 219 1 b 220 1 a 221 1 b 222 1 a 223 1 b 224 1 a
+225 0 b 226 1 a 227 0 b 228 0 a 229 1 b 230 0 a 231 1 b 232 1 a
+233 1 b 234 1 a 235 1 b 236 1 a 237 0 b 238 1 a 239 0 b 240 0 a
+;
+run;
+
+ods html image_dpi=300 style=htmlblue file='program4.7.html';
+proc freq;
+tables aval*trtp /norow nocol chisq;
+run;
+ods html close;
+
+
+**** PROGRAM 4.8;
+**** DEATH ANALYSIS DATASET ADDEATH;
+data ADDEATH;
+label USUBJID  = 'Unique Subject Identifier'
+      TRTP     = 'Planned Treatment'
+      PARAM    = 'Parameter'
+      AVAL     = 'Analysis Value';
+PARAM = 'Subject Died';
+input USUBJID $ AVAL TRTP $ @@;
+datalines;
+101 0 a 102 . b 103 1 a 104 . b 105 1 a 106 . b 107 1 a 108 . b
+109 1 a 110 1 b 111 1 a 112 1 b 113 0 a 114 0 b 115 1 a 116 0 b
+117 1 a 118 0 b 119 1 a 120 1 b 121 1 a 122 1 b 123 1 a 124 1 b
+125 1 a 126 0 b 127 1 a 128 0 b 129 1 a 130 0 b 131 1 a 132 1 b
+133 1 a 134 1 b 135 1 a 136 1 b 137 1 a 138 1 b 139 1 a 140 1 b
+201 0 b 202 1 a 203 0 b 204 0 a 205 1 b 206 0 a 207 1 b 208 1 a
+209 1 b 210 1 a 211 1 b 212 1 a 213 0 b 214 1 a 215 0 b 216 0 a
+217 1 b 218 0 a 219 1 b 220 1 a 221 1 b 222 1 a 223 1 b 224 1 a
+225 0 b 226 1 a 227 0 b 228 0 a 229 1 b 230 0 a 231 1 b 232 1 a
+233 1 b 234 1 a 235 1 b 236 1 a 237 0 b 238 1 a 239 0 b 240 0 a
+;
+run;
+
+ods html image_dpi=300 style=htmlblue file='program4.8.html';
+proc freq;
+tables aval*trtp /norow nocol chisq;
+run;
+ods html close;
+
+
+**** PROGRAM 4.9;
+**** INPUT SAMPLE SDTM AE DOMAIN.;
+data AE;
+label USUBJID = 'Unique Subject Identifier'
+      AESTDTC = 'Start Date/Time of Adverse Event'
+      AEENDTC = 'End Date/Time of Adverse Event'
+      AETERM = 'Reported Term for the Adverse Event';
+input USUBJID $ 1-3 AESTDTC $ 5-14 AEENDTC $ 16-25 AETERM $15.;
+datalines;
+101 2004-01-01 2004-01-02 Headache
+101 2004-01-15 2004-02-03 Back Pain
+102 2003-11-03 2003-12-10 Rash
+102 2004-01-03 2004-01-10 Abdominal Pain
+102 2004-04-04 2004-04-04 Constipation
+;
+run;
+
+**** INPUT SAMPLE SDTM CM DOMAIN.;
+data CM;
+label USUBJID = 'Unique Subject Identifier'
+      CMSTDTC = 'Start Date/Time of Medication'
+      CMENDTC = 'End Date/Time of Medication'
+      CMTRT   = 'Reported Name of Drug, Med, or Therapy';
+input USUBJID $ 1-3 CMSTDTC $ 5-14 CMENDTC $ 16-25 CMTRT $21.;
+datalines;
+101 2004-01-01 2004-01-01 Acetaminophen
+101 2003-10-20 2004-03-20 Tylenol w/ Codeine
+101 2003-12-12 2003-12-12 Sudaphed
+102 2003-12-07 2003-12-18 Hydrocortizone Cream
+102 2004-01-06 2004-01-08 Simethicone
+102 2004-01-09 2004-03-10 Esomeprazole
+;
+run;
+
+**** MERGE CONCOMITANT MEDICATIONS WITH ADVERSE EVENTS;
+proc sql;
+	create table ae_meds as
+	select a.usubjid, a.aestdtc, a.aeendtc, a.aeterm,
+	       c.cmstdtc, c.cmendtc, c.cmtrt from
+		   ae as a  left join cm as c
+	on (a.usubjid = c.usubjid) and
+	   ((a.aestdtc <= c.cmstdtc <= a.aeendtc) or
+	    (a.aestdtc <= c.cmendtc <= a.aeendtc) or
+        ((c.cmstdtc < a.aestdtc) and (a.aeendtc < c.cmendtc)));
+quit;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.9.html';
+proc print data=ae_meds;
+var usubjid aestdtc aeendtc aeterm cmstdtc cmendtc cmtrt;
+run;
+ods html close;
+
+
+**** PROGRAM 4.10;
+**** SORT LOW LEVEL TERM DATA FROM MEDDRA WHERE
+**** LOW_LEVEL_TERM = LOWEST LEVEL TERM, LLT_CODE = LOWEST
+**** LEVEL TERM CODE, AND PT_CODE = PREFERRED TERM CODE.;
+proc sort
+   data = low_level_term(keep = low_level_term llt_code 
+          pt_code);
+      by pt_code;
+run;  
+
+**** SORT PREFERRED TERM DATA FROM MEDDRA WHERE
+**** PREFERRED_TERM = PREFERRED TERM, SOC_CODE = SYSTEM
+**** ORGAN CLASS CODE, AND PT_CODE = PREFERRED TERM CODE.; 
+proc sort
+   data = preferred_term(keep = preferred_term pt_code soc_code);
+      by pt_code;
+run;
+
+**** MERGE LOW LEVEL TERMS WITH PREFERRED TERMS KEEPING ALL LOWER 
+**** LEVEL TERM RECORDS.;
+data llt_pt;
+   merge low_level_term (in = inlow)
+         preferred_term;
+      by pt_code;
+
+      if inlow;
+run;
+
+**** SORT BODY SYSTEM DATA FROM MEDDRA WHERE
+**** SYSTEM_CLASS_TERM = SYSTEM ORGAN CLASS TERM AND SOC_CODE =
+**** SYSTEM ORGAN CLASS CODE.; 
+proc sort
+   data = soc_term(keep = system_class_term soc_code);
+      by soc_code;
+run;
+
+**** SORT LOWER LEVEL TERM AND PREFERRED TERMS FOR MERGE WITH
+**** SYSTEM ORGAN CLASS DATA.;
+proc sort
+   data = llt_pt;
+      by soc_code;
+run;
+
+ 
+**** MERGE PREFERRED TERM LEVEL WITH BODY SYSTEMS;
+data meddra;
+   merge llt_pt (in = in_llt_pt)
+         soc_term;
+      by soc_code;
+
+      if in_llt_pt;
+run;
+
+
+**** PROGRAM 4.11;
+proc sort
+   data = whodrug(keep = seq1 seq2 drug_name drugrecno
+                  where = (seq1 = ‘01’ and seq2 = ‘001’) )
+          nodupkey;
+      by drugrecno drug_name;
+run;
+
+
+**** PROGRAM 4.12;
+proc options option=yearcutoff;
+run;
+
+**** IMPLICIT CENTURY;
+data _null_;
+  date = "01JAN19"d;
+  put date=date9.;
+  date = "01JAN20"d;
+  put date=date9.;
+run;
+
+**** EXPLICIT CENTURY;
+data _null_;
+  date = "01JAN1919"d;
+  put date=date9.;
+  date = "01JAN1920"d;
+  put date=date9.;
+run;
+
+
+**** PROGRAM 4.13;
+**** INPUT SAMPLE ADVERSE EVENT DATA;
+data AE;
+input @1 USUBJID $3.
+      @5 AETERM $15.;
+datalines;
+101 Headache
+102 Rash
+102 Fatal MI
+102 Abdominal Pain
+102 Constipation
+;
+run; 
+
+**** INPUT SAMPLE DEATH DATA FLAG WHERE 
+**** DEATHFL = 1 IF PATIENT DIED AND 0 IF NOT.;
+data ADSL;
+input @1 USUBJID $3. 
+      @5 DEATHFL 1.;
+datalines;
+101 0
+102 0
+;
+run;
+
+**** SET DEATH = 1 FOR PATIENTS WHO HAD ADVERSE EVENTS THAT
+**** RESULTED IN DEATH.;
+data ADDEATH;
+  merge adsl ae;
+    by usubjid;
+
+    if aeterm="Fatal MI" then
+      DEATHFL = 1;
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.13.html';
+proc print
+data=addeath;
+var usubjid aeterm deathfl;
+run;
+ods html close;
+
+
+**** PROGRAM 4.14;
+**** INPUT SAMPLE ADVERSE EVENT DATA;
+data AE;
+input @1 USUBJID $3.
+      @5 AETERM $15.;
+datalines;
+101 Headache
+102 Rash
+102 Fatal MI
+102 Abdominal Pain
+102 Constipation
+;
+run; 
+
+**** INPUT SAMPLE DEATH DATA FLAG WHERE 
+**** DEATHFL = 1 IF PATIENT DIED AND 0 IF NOT.;
+data ADSL;
+input @1 USUBJID $3. 
+      @5 DEATHFL 1.;
+datalines;
+101 0
+102 0
+;
+run;
+
+**** SET DEATH = 1 FOR PATIENTS WHO HAD ADVERSE EVENTS THAT
+**** RESULTED IN DEATH.;
+data addeath;
+  merge adsl(rename=(deathfl=_deathfl)) ae;
+    by usubjid;
+
+    drop _deathfl;
+
+    if aeterm="Fatal MI" then
+      DEATHFL = 1;
+    else
+      DEATHFL = _deathfl;
+run;
+
+
+
+ods html image_dpi=300 style=htmlblue file='program4.14.html';
+proc print
+data=addeath;
+var usubjid aeterm deathfl;
+run;
+ods html close;
+
+
+**** PROGRAM 4.15;
+**** FLAG LAB VALUE AS LOW OR HIGH;
+data ADLB;
+   set lb;
+
+      if . < lbstresn < 3.15 then
+         ANRIND = "L";
+      else if lbstresn > 5.5 then
+         ANRIND = "H";
+run;
+
+**** FLAG LAB VALUE AS LOW OR HIGH;
+data ADLB;
+   set lb;
+
+      if . < round(lbstresn,.000000001) < 3.15 then
+          ANRIND = "L";
+      else if round(lbstresn,.000000001) > 5.5 then
+          ANRIND = "H";
+run;
+
+
+**** PROGRAM 4.16;
+**** BLOOD PRESSURE VALUES BY SUBJECT, VISIT AND TEST; 
+data VS;
+label USUBJID  = 'Unique Subject Identifier'
+      VSTESTCD = 'Vitals Signs Test Short Name'
+      VSSTRESN = 'Numeric Result/Finding in Standard Units';
+input USUBJID $ VISITNUM VSTESTCD $ VSSTRESN; 
+datalines;
+101 0 DBP 160
+101 0 SBP  90
+101 1 DBP 140
+101 1 SBP  87
+101 2 DBP 130
+101 2 SBP  85
+101 3 DBP 120
+101 3 SBP  80
+202 0 DBP 141
+202 0 SBP  75
+202 1 DBP 161
+202 1 SBP  80
+202 2 DBP 171
+202 2 SBP  85
+202 3 DBP 181
+202 3 SBP  90
+;
+run;
+
+**** SORT DATA BY SUBJECT, TEST NAME, AND VISIT; 
+proc sort
+  data=vs;
+    by usubjid vstestcd visitnum;
+run;
+
+**** CALCULATE CHANGE FROM BASELINE VALUES;   
+data ADVS;                           
+  set vs;
+    by usubjid vstestcd visitnum;
+
+    **** COPY SDTM CONTENT INTO BDS VARIABLES;       
+    AVAL = vsstresn;
+    PARAMCD = vstestcd;
+    AVISITN = visitnum;
+
+    **** INITIALIZE BASELINE TO MISSING;
+    retain BASE;
+    if first.vstestcd then
+      BASE = .;
+	    
+    **** DETERMINE BASELINE AND CALCULATE CHANGES; 
+    if avisitn = 0 then
+      do;
+        ABLFL = 'Y';
+        BASE = aval;
+      end;
+    else if avisitn > 0 then
+      do;
+        CHG = aval - base;
+        PCHG = ((aval - base) / base) * 100;
+      end;
+
+    label AVISITN = 'Analysis Visit (N)'
+          ABLFL   = 'Baseline Record Flag'
+          PARAMCD = 'Parameter Code'
+          AVAL    = 'Analysis Value'
+          BASE    = 'Baseline Value'
+          CHG     = 'Change from Baseline'
+          PCHG    = 'Percent Change from Baseline';
+run;
+
+
+ods html image_dpi=300 style=htmlblue file='program4.16.html';
+proc print
+  data=advs;
+  var usubjid avisitn paramcd aval ablfl base chg pchg;
+run;
+ods html close;
+
+
+**** PROGRAM 4.17;
+**** INPUT SAMPLE SEIZURE DATA AS SDTM CLINICAL EVENTS DOMAIN;
+data CE;                                                                                                                  
+label USUBJID  = 'Unique Subject Identifier'
+      CETERM   = 'Reported Term for the Clinical Event'
+      CEPRESP  = 'Clinical Event Pre-Specified'
+      CEOCCUR  = 'Clinical Event Occurrence'
+      CESTDTC  = 'Start Date/Time of Clinical Event';
+CETERM = 'Seizure';
+CEPRESP = 'Y';
+input USUBJID $ 1-3 CEOCCUR $ 5 CESTDTC $ 7-16; 
+datalines;
+101 Y 2004-05-05
+102 N           
+103             
+104 Y 2004-06-07
+;
+run;
+
+**** INPUT SAMPLE END OF STUDY DATE AS SDTM 
+**** DEMOGRAPHICS DOMAIN;
+data DM;
+label USUBJID = 'Unique Subject Identifier'
+      RFENDTC = 'Subject Reference End Date/Time';
+input USUBJID $ 1-3 RFENDTC $ 5-14; 
+datalines;
+101 2004-08-05
+102 2004-08-10
+103 2004-08-12
+104 2004-08-20
+;
+run;
+
+**** INPUT SAMPLE DOSING DATA AS SDTM EXPOSURE DOMAIN;
+data EX;
+label USUBJID = "Unique Subject Identifier"
+      EXSTDTC = "Start Date/Time of Treatment";
+input USUBJID $ 1-3 EXSTDTC $ 5-14; 
+datalines;
+101 2004-01-01
+102 2004-01-03
+103 2004-01-06
+104 2004-01-09
+;
+run;
+ 
+**** CREATE TIME TO SEIZURE ANALYSIS DATASET
+**** AS CDISC ADAM BASIC DATA STRUCTURE TIME TO EVENT;
+data ADSEIZ;                                         
+   merge dm ex ce;
+      by usubjid;
+
+      PARAM = 'Time to Seizure (days)';
+
+      if ceterm = 'Seizure' and ceoccur = 'Y' then
+        do;
+          AVAL = input(cestdtc,yymmdd10.) -
+                 input(exstdtc,yymmdd10.) + 1;
+          CNSR =  0;
+          ADT = input(cestdtc,yymmdd10.);
+        end;
+      else if ceterm = 'Seizure' and ceoccur = 'N' then
+        do;
+          AVAL = input(rfendtc,yymmdd10.) -
+                 input(exstdtc,yymmdd10.) + 1;
+          CNSR = 1;
+	  ADT = input(rfendtc,yymmdd10.);
+        end;
+
+      label PARAM = 'Time to Seizure (days)'
+            AVAL  = 'Analysis Value'
+            ADT   = 'Analysis Date'
+            CNSR  = 'Censor';
+      format ADT date9.;
+run;
+
+ods html image_dpi=300 style=htmlblue file='program4.17.html';
+proc print
+  data=adseiz;
+  var usubjid param aval cnsr adt rfendtc exstdtc ceterm cepresp ceoccur cestdtc; 
+run;
+ods html close;
+
+
+**** PROGRAM 5.1;
+**** INPUT SAMPLE DEMOGRAPHICS DATA AS CDISC ADaM ADSL;
+data ADSL;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)"
+      SEXN    = "Sex (N)"
+      RACEN   = "Race (N)"
+      AGE     = "Age";
+input USUBJID $ TRTPN SEXN RACEN AGE @@;
+datalines;
+101 0 1 3 37  301 0 1 1 70  501 0 1 2 33  601 0 1 1 50  701 1 1 1 60
+102 1 2 1 65  302 0 1 2 55  502 1 2 1 44  602 0 2 2 30  702 0 1 1 28
+103 1 1 2 32  303 1 1 1 65  503 1 1 1 64  603 1 2 1 33  703 1 1 2 44
+104 0 2 1 23  304 0 1 1 45  504 0 1 3 56  604 0 1 1 65  704 0 2 1 66
+105 1 1 3 44  305 1 1 1 36  505 1 1 2 73  605 1 2 1 57  705 1 1 2 46
+106 0 2 1 49  306 0 1 2 46  506 0 1 1 46  606 0 1 2 56  706 1 1 1 75
+201 1 1 3 35  401 1 2 1 44  507 1 1 2 44  607 1 1 1 67  707 1 1 1 46
+202 0 2 1 50  402 0 2 2 77  508 0 2 1 53  608 0 2 2 46  708 0 2 1 55
+203 1 1 2 49  403 1 1 1 45  509 0 1 1 45  609 1 2 1 72  709 0 2 2 57
+204 0 2 1 60  404 1 1 1 59  510 0 1 3 65  610 0 1 1 29  710 0 1 1 63
+205 1 1 3 39  405 0 2 1 49  511 1 2 2 43  611 1 2 1 65  711 1 1 2 61
+206 1 2 1 67  406 1 1 2 33  512 1 1 1 39  612 1 1 2 46  712 0 . 1 49
+;
+ 
+
+**** DEFINE VARIABLE FORMATS NEEDED FOR TABLE;
+proc format;
+   value trtpn
+      1 = "Active"
+      0 = "Placebo"; 
+   value sexn
+      . = "Missing"
+      1 = "Male"
+      2 = "Female";
+   value racen
+      1 = "White"
+      2 = "Black"
+      3 = "Other*";
+run;
+
+**** CREATE SUMMARY OF DEMOGRAPHICS WITH PROC TABULATE;
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.1.pdf';
+proc tabulate
+   data = adsl
+   missing;
+
+   class trtpn sexn racen;
+   var age;
+   table age = 'Age' * (n = 'n' * f = 8. mean = 'Mean' * f = 5.1 
+                        std = 'Standard Deviation' * f = 5.1
+                        min = 'Min' * f = 3. Max = 'Max' * f = 3.)
+         sexn = 'Sex' * (n = 'n' * f = 3. colpctn = '%' * f = 4.1)
+         racen = 'Race' * (n = 'n' * f = 3. colpctn = '%' * f = 4.1),
+		(trtpn = "  ") (all = 'Overall');
+
+   format trtpn trtpn. racen racen. sexn sexn.;
+
+   title1 j=l 'Company/Trial Name' 
+          j=r 'Page #{thispage} of #{lastpage}';
+   title2 j=c 'Table 5.1';
+   title3 j=c 'Demographics and Baseline Characteristics';
+   footnote1 j=l '* Other includes Asian, Native American, and other'
+                 ' races.';
+   footnote2 j=l "Created by %sysfunc(getoption(sysin)) on &sysdate9..";  
+run; 
+ods pdf close;
+
+
+**** PROGRAM 5.2;
+**** INPUT SAMPLE DEMOGRAPHICS DATA AS CDISC ADaM ADSL;
+data ADSL;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)"
+      SEXN    = "Sex (N)"
+      RACEN   = "Race (N)"
+      AGE     = "Age";
+input USUBJID $ TRTPN SEXN RACEN AGE @@;
+datalines;
+101 0 1 3 37  301 0 1 1 70  501 0 1 2 33  601 0 1 1 50  701 1 1 1 60
+102 1 2 1 65  302 0 1 2 55  502 1 2 1 44  602 0 2 2 30  702 0 1 1 28
+103 1 1 2 32  303 1 1 1 65  503 1 1 1 64  603 1 2 1 33  703 1 1 2 44
+104 0 2 1 23  304 0 1 1 45  504 0 1 3 56  604 0 1 1 65  704 0 2 1 66
+105 1 1 3 44  305 1 1 1 36  505 1 1 2 73  605 1 2 1 57  705 1 1 2 46
+106 0 2 1 49  306 0 1 2 46  506 0 1 1 46  606 0 1 2 56  706 1 1 1 75
+201 1 1 3 35  401 1 2 1 44  507 1 1 2 44  607 1 1 1 67  707 1 1 1 46
+202 0 2 1 50  402 0 2 2 77  508 0 2 1 53  608 0 2 2 46  708 0 2 1 55
+203 1 1 2 49  403 1 1 1 45  509 0 1 1 45  609 1 2 1 72  709 0 2 2 57
+204 0 2 1 60  404 1 1 1 59  510 0 1 3 65  610 0 1 1 29  710 0 1 1 63
+205 1 1 3 39  405 0 2 1 49  511 1 2 2 43  611 1 2 1 65  711 1 1 2 61
+206 1 2 1 67  406 1 1 2 33  512 1 1 1 39  612 1 1 2 46  712 0 . 1 49
+;
+ 
+
+**** DEFINE VARIABLE FORMATS NEEDED FOR TABLE;
+proc format;
+   value trtpn
+      1 = "Active"
+      0 = "Placebo"; 
+   value sexn
+      . = "Missing"
+      1 = "Male"
+      2 = "Female";
+   value racen
+      1 = "White"
+      2 = "Black"
+      3 = "Other*";
+run;
+
+**** CREATE SUMMARY OF DEMOGRAPHICS WITH PROC REPORT;
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.2.pdf';
+
+**** CREATE SUMMARY OF DEMOGRAPHICS WITH PROC TABULATE;
+proc report
+   data = adsl
+   nowindows
+   missing 
+   headline;
+
+   column ( trtpn,
+          ( ("Age" 
+             age = agen age = agemean age = agestd age = agemin
+             age = agemax)
+             sexn,(sexn = sexnn sexnpct) 
+             racen,(racen = racenn racenpct)));       
+                                                             
+   define trtpn    /across format = trtpn. "  ";                         
+   define agen     /analysis n format = 3. 'N';
+   define agemean  /analysis mean format = 5.3 'Mean';
+   define agestd   /analysis std format = 5.3 'SD';
+   define agemin   /analysis min format = 3. 'Min';
+   define agemax   /analysis max format = 3. 'Max';
+
+   define sexn     /across "Sex" format = sexn.;         
+   define sexnn    /analysis n format = 3. 'N';                    
+   define sexnpct  /computed format = percent5. '(%)';           
+   define racen    /across "Race" format = racen.;                    
+   define racenn   /analysis n format = 3. width = 6 'N';                    
+   define racenpct /computed format = percent5. '(%)';           
+
+   compute before;                                              
+   totga = sum(_c6_,_c8_,_c10_);                                              
+   totgp = sum(_c23_,_c25_,_c27_);                                              
+   totra = sum(_c12_,_c14_,_c16_);                                              
+   totrp = sum(_c29_,_c31_,_c33_);                                              
+   endcomp;                                                     
+   compute sexnpct;                                           
+   _c7_ = _c6_ / totga;                                              
+   _c9_ = _c8_ / totga;                                              
+   _c11_ = _c10_ / totga;                                              
+   _c24_ = _c23_ / totgp;                                              
+   _c26_ = _c25_ / totgp;                                              
+   _c28_ = _c27_ / totgp;                                              
+   endcomp;                   
+   compute racenpct;                                           
+   _c13_ = _c12_ / totra;                                              
+   _c15_ = _c14_ / totra;                                              
+   _c17_ = _c16_ / totra;                                              
+   _c30_ = _c29_ / totrp;                                              
+   _c32_ = _c31_ / totrp;                                              
+   _c34_ = _c33_ / totrp;                                              
+   endcomp;        
+
+   title1 j=l 'Company/Trial Name' 
+          j=r 'Page #{thispage} of #{lastpage}';
+   title2 j=c 'Table 5.1';
+   title3 j=c 'Demographics and Baseline Characteristics';
+   footnote1 j=l '* Other includes Asian, Native American, and other'
+                 ' races.';
+   footnote2 j=l "Created by %sysfunc(getoption(sysin)) on &sysdate9..";  
+run; 
+ods pdf close;   
+
+
+**** PROGRAM 5.3;
+**** INPUT SAMPLE DEMOGRAPHICS DATA AS CDISC ADaM ADSL;
+data ADSL;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)"
+      SEXN    = "Sex (N)"
+      RACEN   = "Race (N)"
+      AGE     = "Age";
+input USUBJID $ TRTPN SEXN RACEN AGE @@;
+datalines;
+101 0 1 3 37  301 0 1 1 70  501 0 1 2 33  601 0 1 1 50  701 1 1 1 60
+102 1 2 1 65  302 0 1 2 55  502 1 2 1 44  602 0 2 2 30  702 0 1 1 28
+103 1 1 2 32  303 1 1 1 65  503 1 1 1 64  603 1 2 1 33  703 1 1 2 44
+104 0 2 1 23  304 0 1 1 45  504 0 1 3 56  604 0 1 1 65  704 0 2 1 66
+105 1 1 3 44  305 1 1 1 36  505 1 1 2 73  605 1 2 1 57  705 1 1 2 46
+106 0 2 1 49  306 0 1 2 46  506 0 1 1 46  606 0 1 2 56  706 1 1 1 75
+201 1 1 3 35  401 1 2 1 44  507 1 1 2 44  607 1 1 1 67  707 1 1 1 46
+202 0 2 1 50  402 0 2 2 77  508 0 2 1 53  608 0 2 2 46  708 0 2 1 55
+203 1 1 2 49  403 1 1 1 45  509 0 1 1 45  609 1 2 1 72  709 0 2 2 57
+204 0 2 1 60  404 1 1 1 59  510 0 1 3 65  610 0 1 1 29  710 0 1 1 63
+205 1 1 3 39  405 0 2 1 49  511 1 2 2 43  611 1 2 1 65  711 1 1 2 61
+206 1 2 1 67  406 1 1 2 33  512 1 1 1 39  612 1 1 2 46  712 0 . 1 49
+;
+ 
+**** DEFINE VARIABLE FORMATS NEEDED FOR TABLE;
+proc format;
+   value trtpn
+      1 = "Active"
+      0 = "Placebo"; 
+   value sexn
+      . = "Missing"
+      1 = "Male"
+      2 = "Female";
+   value racen
+      1 = "White"
+      2 = "Black"
+      3 = "Other*";
+run;
+
+**** DUPLICATE THE INCOMING DATASET FOR OVERALL COLUMN CALCULATIONS SO
+**** NOW TRT HAS VALUES 0 = PLACEBO, 1 = ACTIVE, AND 2 = OVERALL.;
+data adsl;
+   set adsl;
+   output;
+   trtpn = 2;
+   output;
+run;
+
+**** AGE STATISTICS PROGRAMMING ************************************;
+**** GET P VALUE FROM NON PARAMETRIC COMPARISON OF AGE MEANS.;
+proc npar1way 
+   data = adsl
+   wilcoxon 
+   noprint;
+      where trtpn in (0,1);
+      class trtpn;
+      var age;
+      output out=pvalue wilcoxon;
+run;
+
+proc sort 
+   data=adsl;
+      by trtpn;
+run;
+ 
+***** GET AGE DESCRIPTIVE STATISTICS N, MEAN, STD, MIN, AND MAX.;
+proc univariate 
+   data = adsl noprint;
+      by trtpn;
+
+      var age;
+      output out = age 
+             n = _n mean = _mean std = _std min = _min max = _max;
+run;
+
+**** FORMAT AGE DESCRIPTIVE STATISTICS FOR THE TABLE.;
+data age;
+   set age;
+
+   format n mean std min max $14.;
+   drop _n _mean _std _min _max;
+
+   n = put(_n,5.);
+   mean = put(_mean,7.1);
+   std = put(_std,8.2);
+   min = put(_min,7.1);
+   max = put(_max,7.1);
+run;
+
+**** TRANSPOSE AGE DESCRIPTIVE STATISTICS INTO COLUMNS.;
+proc transpose 
+   data = age 
+   out = age 
+   prefix = col;
+      var n mean std min max;
+      id trtpn;
+run; 
+ 
+**** CREATE AGE FIRST ROW FOR THE TABLE.;
+data label;
+   set pvalue(keep = p2_wil rename = (p2_wil = pvalue));
+   length label $ 85;
+   label = "#S={font_weight=bold} Age (years)";
+run;
+ 
+**** APPEND AGE DESCRIPTIVE STATISTICS TO AGE P VALUE ROW AND 
+**** CREATE AGE DESCRIPTIVE STATISTIC ROW LABELS.; 
+data age;
+   length label $ 85 col0 col1 col2 $ 25 ;
+   set label age;
+
+   keep label col0 col1 col2 pvalue ;
+   if _n_ > 1 then 
+      select;
+         when(_NAME_ = 'n')    label = "#{nbspace 6}N";
+         when(_NAME_ = 'mean') label = "#{nbspace 6}Mean";
+         when(_NAME_ = 'std')  label = "#{nbspace 6}Standard Deviation";
+         when(_NAME_ = 'min')  label = "#{nbspace 6}Minimum";
+         when(_NAME_ = 'max')  label = "#{nbspace 6}Maximum";
+         otherwise;
+      end;
+run;
+**** END OF AGE STATISTICS PROGRAMMING *****************************;
+
+ 
+**** SEX STATISTICS PROGRAMMING ************************************;
+**** GET SIMPLE FREQUENCY COUNTS FOR SEX.;
+proc freq 
+   data = adsl 
+   noprint;
+      where trtpn ne .; 
+      tables trtpn * sexn / missing outpct out = sexn;
+run;
+ 
+**** FORMAT SEX N(%) AS DESIRED.;
+data sexn;
+   set sexn;
+      where sexn ne .;
+      length value $25;
+      value = put(count,4.) || ' (' || put(pct_row,5.1)||'%)';
+run;
+
+proc sort
+   data = sexn;
+      by sexn;
+run;
+ 
+**** TRANSPOSE THE SEX SUMMARY STATISTICS.;
+proc transpose 
+   data = sexn 
+   out = sexn(drop = _name_) 
+   prefix = col;
+      by sexn;
+      var value;
+      id trtpn;
+run;
+ 
+**** PERFORM A CHI-SQUARE TEST ON SEX COMPARING ACTIVE VS PLACEBO.;
+proc freq 
+   data = adsl 
+   noprint;
+      where sexn ne . and trtpn not in (.,2);
+      table sexn * trtpn / chisq;
+      output out = pvalue pchi;
+run;
+
+**** CREATE SEX FIRST ROW FOR THE TABLE.;
+data label;
+	set pvalue(keep = p_pchi rename = (p_pchi = pvalue));
+	length label $ 85;
+	label = "#S={font_weight=bold} Sex";
+run;
+
+**** APPEND SEX DESCRIPTIVE STATISTICS TO SEX P VALUE ROW AND 
+**** CREATE SEX DESCRIPTIVE STATISTIC ROW LABELS.; 
+data sexn;
+   length label $ 85 col0 col1 col2 $ 25 ;
+   set label sexn;
+
+   keep label col0 col1 col2 pvalue ;
+   if _n_ > 1 then 
+        label= "#{nbspace 6}" || put(sexn,sexn.);
+run;
+**** END OF SEX STATISTICS PROGRAMMING *****************************;
+
+ 
+**** RACE STATISTICS PROGRAMMING ***********************************;
+**** GET SIMPLE FREQUENCY COUNTS FOR RACE;
+proc freq 
+   data = adsl 
+   noprint;
+      where trtpn ne .; 
+      tables trtpn * racen / missing outpct out = racen;
+run;
+ 
+**** FORMAT RACE N(%) AS DESIRED;
+data racen;
+   set racen;
+      where racen ne .;
+      length value $25;
+      value = put(count,4.) || ' (' || put(pct_row,5.1)||'%)';
+run;
+
+proc sort
+   data = racen;
+      by racen;
+run;
+ 
+**** TRANSPOSE THE RACE SUMMARY STATISTICS;
+proc transpose 
+   data = racen 
+   out = racen(drop = _name_) 
+   prefix=col;
+      by racen;
+      var value;
+      id trtpn;
+run;
+ 
+**** PERFORM A FISHER'S EXACT TEST ON RACE COMPARING ACTIVE VS PLACEBO.;
+proc freq 
+   data = adsl 
+   noprint;
+      where racen ne . and trtpn not in (.,2);
+      table racen * trtpn / exact;
+      output out = pvalue exact;
+run;
+ 
+**** CREATE RACE FIRST ROW FOR THE TABLE.;
+data label;
+	set pvalue(keep = xp2_fish rename = (xp2_fish = pvalue));
+	length label $ 85;
+	label = "#S={font_weight=bold} Race";
+run;
+
+**** APPEND RACE DESCRIPTIVE STATISTICS TO RACE P VALUE ROW AND 
+**** CREATE RACE DESCRIPTIVE STATISTIC ROW LABELS.; 
+data racen;
+   length label $ 85 col0 col1 col2 $ 25 ;
+   set label racen;
+
+   keep label col0 col1 col2 pvalue ;
+   if _n_ > 1 then 
+        label= "#{nbspace 6}" || put(racen,racen.);
+run;
+**** END OF RACE STATISTICS PROGRAMMING *******************************;
+
+
+**** CONCATENATE AGE, SEX, AND RACE STATISTICS AND CREATE GROUPING
+**** GROUP VARIABLE FOR LINE SKIPPING IN PROC REPORT.;
+data forreport;
+   set age(in = in1)
+       sexn(in = in2)
+       racen(in = in3);
+
+       group = sum(in1 * 1, in2 * 2, in3 * 3);
+run;
+
+
+**** DEFINE THREE MACRO VARIABLES &N0, &N1, AND &NT THAT ARE USED IN 
+**** THE COLUMN HEADERS FOR "PLACEBO," "ACTIVE" AND "OVERALL" THERAPY 
+**** GROUPS.;
+data _null_;
+   set adsl end=eof;
+
+   **** CREATE COUNTER FOR N0 = PLACEBO, N1 = ACTIVE.;
+   if trtpn = 0 then
+      n0 + 1;
+   else if trtpn = 1 then
+      n1 + 1;
+
+   **** CREATE OVERALL COUNTER NT.; 
+   nt + 1;
+  
+   **** CREATE MACRO VARIABLES &N0, &N1, AND &NT.;
+   if eof then
+      do;     
+         call symput("n0",compress('(N='||put(n0,4.) || ')'));
+         call symput("n1",compress('(N='||put(n1,4.) || ')'));
+         call symput("nt",compress('(N='||put(nt,4.) || ')'));
+      end;
+run;
+
+
+**** USE PROC REPORT TO WRITE THE DEMOGRAPHICS TABLE TO FILE.; 
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.3.pdf';
+
+proc report
+   data=forreport
+   nowindows
+   spacing=1
+   headline
+   headskip
+   split = "|";
+
+   columns (group label col1 col0 col2 pvalue);
+
+   define group   /order order = internal noprint;
+   define label   /display " ";
+   define col0    /display style(column)=[asis=on] "Placebo|&n0";
+   define col1    /display style(column)=[asis=on] "Active|&n1";
+   define col2    /display style(column)=[asis=on] "Overall|&nt";
+   define pvalue  /display center " |P-value**" f = pvalue6.4;
+
+   compute after group;
+      line '#{newline}';
+   endcomp;
+
+   title1 j=l 'Company/Trial Name' 
+          j=r 'Page #{thispage} of #{lastpage}';
+   title2 j=c 'Table 5.3';
+   title3 j=c 'Demographics and Baseline Characteristics';
+
+   footnote1 j=l '* Other includes Asian, Native American, and other'
+                 ' races.';
+   footnote2 j=l "** P-values:  Age = Wilcoxon rank-sum, Sex = Pearson's"  
+                 " chi-square, Race = Fisher's exact test.";
+   footnote3 j=l "Created by %sysfunc(getoption(sysin)) on &sysdate9..";  
+run; 
+ods pdf close;   
+
+
+**** PROGRAM 5.4;
+**** INPUT TREATMENT CODE DATA AS ADAM ADSL DATA.;
+data ADSL;
+length USUBJID $ 3;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)";
+input USUBJID $ TRTPN @@;
+datalines;
+101 1  102 0  103 0  104 1  105 0  106 0  107 1  108 1  109 0  110 1
+111 0  112 0  113 0  114 1  115 0  116 1  117 0  118 1  119 1  120 1
+121 1  122 0  123 1  124 0  125 1  126 1  127 0  128 1  129 1  130 1
+131 1  132 0  133 1  134 0  135 1  136 1  137 0  138 1  139 1  140 1
+141 1  142 0  143 1  144 0  145 1  146 1  147 0  148 1  149 1  150 1
+151 1  152 0  153 1  154 0  155 1  156 1  157 0  158 1  159 1  160 1
+161 1  162 0  163 1  164 0  165 1  166 1  167 0  168 1  169 1  170 1
+;
+run;
+
+**** INPUT ADVERSE EVENT DATA AS SDTM AE DOMAIN.;
+data AE;
+label USUBJID     = "Unique Subject Identifier"
+      AEBODSYS    = "Body System or Organ Class"
+      AEDECOD     = "Dictionary-Derived Term"
+      AEREL       = "Causality"
+	  AESEV       = "Severity/Intensity";    
+input USUBJID $ 1-3 AEBODSYS $ 5-30 AEDECOD $ 34-50 
+      AEREL $ 52-67 AESEV $ 70-77;
+datalines;
+101 Cardiac disorders            Atrial flutter    NOT RELATED       MILD
+101 Gastrointestinal disorders   Constipation      POSSIBLY RELATED  MILD
+102 Cardiac disorders            Cardiac failure   POSSIBLY RELATED  MODERATE
+102 Psychiatric disorders        Delirium          NOT RELATED       MILD
+103 Cardiac disorders            Palpitations      NOT RELATED       MILD
+103 Cardiac disorders            Palpitations      NOT RELATED       MODERATE
+103 Cardiac disorders            Tachycardia       POSSIBLY RELATED  MODERATE
+115 Gastrointestinal disorders   Abdominal pain    RELATED           MODERATE
+115 Gastrointestinal disorders   Anal ulcer        RELATED           MILD
+116 Gastrointestinal disorders   Constipation      POSSIBLY RELATED  MILD
+117 Gastrointestinal disorders   Dyspepsia         POSSIBLY RELATED  MODERATE
+118 Gastrointestinal disorders   Flatulence        RELATED           SEVERE
+119 Gastrointestinal disorders   Hiatus hernia     NOT RELATED       SEVERE
+130 Nervous system disorders     Convulsion        NOT RELATED       MILD
+131 Nervous system disorders     Dizziness         POSSIBLY RELATED  MODERATE
+132 Nervous system disorders     Essential tremor  NOT RELATED       MILD
+135 Psychiatric disorders        Confusional state NOT RELATED       SEVERE
+140 Psychiatric disorders        Delirium          NOT RELATED       MILD
+140 Psychiatric disorders        Sleep disorder    POSSIBLY RELATED  MILD
+141 Cardiac disorders            Palpitations      NOT RELATED       SEVERE
+;
+run;
+
+
+**** CREATE ADAE ADAM DATASET TO MAKE HELPFUL COUNTING FLAGS FOR SUMMARIZATION.
+**** THIS WOULD TYPICALLY BE DONE AS A SEPARATE PROGRAM OUTSIDE OF AN AE SUMMARY.;
+data adae;
+  merge ae(in=inae) adsl;
+    by usubjid;
+
+	if inae;
+
+    select (aesev);
+      when('MILD') aesevn = 1;
+      when('MODERATE') aesevn = 2;
+      when('SEVERE') aesevn = 3;
+      otherwise;
+    end;
+    label aesevn = "Severity/Intensity (N)";
+run;
+
+proc sort
+  data=adae;
+    by usubjid aesevn;
+run;
+
+data adae;
+  set adae;
+    by usubjid aesevn;
+
+    if last.usubjid then
+      aoccifl = 'Y';
+
+    label aoccifl = "1st Max Sev./Int. Occurrence Flag";
+run;
+
+proc sort
+  data=adae;
+    by usubjid aebodsys aesevn;
+run;
+
+data adae;
+  set adae;
+    by usubjid aebodsys aesevn;
+
+    if last.aebodsys then
+      aoccsifl = 'Y';
+
+    label aoccsifl = "1st Max Sev./Int. Occur Within SOC Flag";
+run;
+
+proc sort
+  data=adae;
+    by usubjid aedecod aesevn;
+run;
+
+data adae;
+  set adae;
+    by usubjid aedecod aesevn;
+
+    if last.aedecod then
+      aoccpifl = 'Y';
+
+    label aoccpifl = "1st Max Sev./Int. Occur Within PT Flag";
+run;
+**** END OF ADAM ADAE ADAM DATASET DERIVATIONS;
+
+
+**** PUT COUNTS OF TREATMENT POPULATIONS INTO MACRO VARIABLES;
+proc sql noprint;
+  select count(unique usubjid) format = 3. into :n0 from adsl where trtpn=0;
+  select count(unique usubjid) format = 3. into :n1 from adsl where trtpn=1;
+  select count(unique usubjid) format = 3. into :n2 from adsl;
+quit;
+
+**** OUTPUT A SUMMARY TREATMENT SET OF RECORDS. TRTPN=2;
+data adae;
+  set adae;
+  output;
+  trtpn=2;
+  output;
+run;
+
+**** BY SEVERITY ONLY COUNTS;
+proc sql noprint;
+  create table All as
+         select trtpn,               
+                sum(aoccifl='Y') as frequency from adae
+  group by trtpn;
+quit;
+
+proc sql noprint;
+  create table AllBySev as
+         select aesev, trtpn,               
+                sum(aoccifl='Y') as frequency from adae
+  group by aesev, trtpn;
+quit;
+
+**** BY BODY SYSTEM AND SEVERITY COUNTS;
+proc sql noprint;
+  create table AllBodysys as
+         select trtpn, aebodsys,               
+                sum(aoccsifl='Y') as frequency from adae
+  group by trtpn, aebodsys;
+quit;
+
+proc sql noprint;
+  create table AllBodysysBysev as
+         select aesev, trtpn, aebodsys,               
+                sum(aoccsifl='Y') as frequency from adae
+  group by aesev, trtpn, aebodsys;
+quit;
+
+**** BY PREFERRED TERM AND SEVERITY COUNTS;
+proc sql noprint;
+  create table AllPT as
+         select trtpn, aebodsys, aedecod,               
+                sum(aoccpifl='Y') as frequency from adae
+  group by trtpn, aebodsys, aedecod;
+quit;
+
+proc sql noprint;
+  create table AllPTBySev as
+         select aesev, trtpn, aebodsys, aedecod,               
+                sum(aoccpifl='Y') as frequency from adae
+  group by aesev, trtpn, aebodsys, aedecod;
+quit;
+
+**** PUT ALL COUNT DATA TOGETHER;
+data all;
+  set All(in=in1)
+      AllBySev(in=in2)
+      AllBodysys(in=in3)
+      AllBodysysBysev(in=in4)
+      AllPT(in=in5)
+      AllPTBySev(in=in6);
+
+      length description $ 40 sorter $ 200;
+      if in1 then
+        description = 'Any Event';
+      else if in2 or in4 or in6 then
+        description = '#{nbspace 6} ' || propcase(aesev);
+      else if in3 then
+        description = aebodsys;
+      else if in5 then
+        description = '#{nbspace 3}' || aedecod;
+
+      sorter = aebodsys || aedecod || aesev;
+run;
+
+proc sort
+  data=all;
+  by sorter aebodsys aedecod description;
+run;
+
+**** TRANSPOSE THE FREQUENCY COUNTS;
+proc transpose
+  data=all
+  out=flat
+  prefix=count;
+  by sorter aebodsys aedecod description;
+  id trtpn;
+  var frequency;
+run;
+
+proc sort
+  data=flat;
+  by aebodsys aedecod sorter;
+run;
+
+**** CREATE A SECTION BREAK VARIABLE AND FORMATTED COLUMNS;
+data flat;
+  set flat;
+  by aebodsys aedecod sorter;
+
+  retain section 1;
+
+  length col0 col1 col2 $ 20;
+  if count0 not in (.,0) then
+    col0 = put(count0,3.) || " (" || put(count0/&n0*100,5.1) || "%)";
+  if count1 not in (.,0) then
+    col1 = put(count1,3.) || " (" || put(count1/&n1*100,5.1) || "%)";
+  if count2 not in (.,0) then
+    col2 = put(count2,3.) || " (" || put(count2/&n2*100,5.1) || "%)";
+  
+  if sum(count1,count2,count3)>0 then
+    output;
+  if last.aedecod then
+    section + 1;
+run;
+
+**** USE PROC REPORT TO WRITE THE AE TABLE TO FILE.; 
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.4.pdf';
+
+proc report
+   data=flat
+   nowindows
+   split = "|";
+
+   columns section description col1 col0 col2;
+
+   define section     /order order = internal noprint;
+   define description /display style(header)=[just=left] 
+   "Body System|#{nbspace 3} Preferred Term|#{nbspace 6} Severity";
+   define col0        /display "Placebo|N=&n0";
+   define col1        /display "Active|N=&n1";
+   define col2        /display "Overall|N=&n2";
+
+   compute after section;
+      line '#{newline}';
+   endcomp;
+
+   title1 j=l 'Company/Trial Name' 
+          j=r 'Page #{thispage} of #{lastpage}';
+   title2 j=c 'Table 5.4';
+   title3 j=c 'Adverse Events';
+   title4 j=c "By Body System, Preferred Term, and Greatest Severity";
+run; 
+ods pdf close;   
+
+
+**** PROGRAM 5.5;
+**** INPUT TREATMENT CODE DATA AS ADAM ADSL DATA.;
+data ADSL;
+length USUBJID $ 3;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)";
+input USUBJID $ TRTPN @@;
+datalines;
+101 1  102 0  103 0  104 1  105 0  106 0  107 1  108 1  109 0  110 1
+111 0  112 0  113 0  114 1  115 0  116 1  117 0  118 1  119 1  120 1
+121 1  122 0  123 1  124 0  125 1  126 1  127 0  128 1  129 1  130 1
+131 1  132 0  133 1  134 0  135 1  136 1  137 0  138 1  139 1  140 1
+141 1  142 0  143 1  144 0  145 1  146 1  147 0  148 1  149 1  150 1
+151 1  152 0  153 1  154 0  155 1  156 1  157 0  158 1  159 1  160 1
+161 1  162 0  163 1  164 0  165 1  166 1  167 0  168 1  169 1  170 1
+;
+run;
+
+**** INPUT SAMPLE CONCOMITANT MEDICATION DATA AS SDTM CM DOMAIN.;
+data CM;
+label USUBJID = "Unique Subject Identifier"
+      CMDECOD = "Standardized Medication Name";
+input USUBJID $ 1-3 CMDECOD $ 5-27;
+datalines;
+101 ACETYLSALICYLIC ACID   
+101 HYDROCORTISONE         
+102 VICODIN                
+102 POTASSIUM              
+102 IBUPROFEN              
+103 MAGNESIUM SULFATE      
+103 RINGER-LACTATE SOLUTION
+115 LORAZEPAM              
+115 SODIUM BICARBONATE     
+116 POTASSIUM              
+117 MULTIVITAMIN           
+117 IBUPROFEN              
+119 IRON                   
+130 FOLIC ACID             
+131 GABAPENTIN             
+132 DIPHENHYDRAMINE        
+135 SALMETEROL             
+140 HEPARIN                
+140 HEPARIN                
+140 NICOTINE               
+141 HYDROCORTISONE         
+141 IBUPROFEN              
+;
+
+
+**** PERFORM A SIMPLE COUNT OF EACH TREATMENT ARM AND OUTPUT RESULT;
+**** AS MACRO VARIABLES.  N1 = 1ST COLUMN N FOR ACTIVE THERAPY,
+**** N2 = 2ND COLUMN N FOR PLACEBO, N3 REPRESENTS THE 3RD COLUMN TOTAL N.;
+proc sql noprint;
+
+   **** PLACE THE NUMBER OF ACTIVE SUBJECTS IN &N1.;
+   select count(distinct usubjid) format = 3.
+      into :n1 
+      from adsl
+      where trtpn = 1;
+   **** PLACE THE NUMBER OF PLACEBO SUBJECTS IN &N2.;
+   select count(distinct usubjid) format = 3.
+      into :n2 
+      from adsl
+      where trtpn = 0;
+   **** PLACE THE TOTAL NUMBER OF SUBJECTS IN &N3.;
+   select count(distinct usubjid) format = 3.
+      into :n3 
+      from adsl
+      where trtpn ne .;
+quit;
+
+***** MERGE CCONCOMITANT MEDICATIONS AND TREATMENT DATA.
+***** KEEP RECORDS FOR SUBJECTS WHO HAD CONMEDS AND TOOK STUDY THERAPY.
+***** GET UNIQUE CONCOMITANT MEDICATIONS WITHIN PATIENTS.;
+proc sql
+   noprint;
+   create table cmtosum as
+      select unique(c.cmdecod) as cmdecod, c.usubjid, t.trtpn
+         from cm as c, adsl as t
+         where c.usubjid = t.usubjid
+         order by usubjid, cmdecod;
+quit;
+
+**** GET MEDICATION COUNTS BY TREATMENT AND PLACE IN DATASET COUNTS.;
+**** TURN OFF LST OUTPUT.;
+ods listing close;       
+**** SEND SUMS BY TREATMENT TO COUNTS DATA SET.;
+ods output CrossTabFreqs = counts; 
+proc freq
+   data = cmtosum;
+      tables trtpn * cmdecod;
+run;
+ods output close;
+ods listing;
+
+proc sort
+   data = counts;
+      by cmdecod;
+run;
+
+**** MERGE COUNTS DATA SET WITH ITSELF TO PUT THE THREE 
+**** TREATMENT COLUMNS SIDE BY SIDE FOR EACH CONMED.  CREATE GROUP
+**** VARIABLE WHICH ARE USED TO CREATE BREAK LINE IN THE REPORT. 
+**** DEFINE COL1-COL3 WHICH ARE THE COUNT/% FORMATTED COLUMNS.;
+data cm;
+   merge counts(where = (trtpn = 1) rename = (frequency = count1))
+         counts(where = (trtpn = 0) rename = (frequency = count2))
+         counts(where = (trtpn = .) rename = (frequency = count3))
+         end = eof;
+      by cmdecod;
+
+	  keep cmdecod rowlabel col1-col3 section;
+	  length rowlabel $ 25 col1-col3 $ 10;
+
+	  **** LABEL "ANY MEDICATION" ROW AND PUT IN FIRST GROUP.
+	  **** BY MEDICATION COUNTS GO IN THE SECOND GROUP.;
+	  if cmdecod = '' then
+	     do;
+	        rowlabel = "ANY MEDICATION";	
+		    section = 1;
+         end;
+	  else 
+	     do;
+            rowlabel = cmdecod;
+		    section = 2;
+         end;
+
+	  **** CALCULATE PERCENTAGES AND CREATE N/% TEXT IN COL1-COL3.;
+      pct1 = (count1 / &n1) * 100;
+      pct2 = (count2 / &n2) * 100;
+      pct3 = (count3 / &n3) * 100;
+           
+      col1 = put(count1,3.) || " (" || put(pct1, 3.) || "%)";
+      col2 = put(count2,3.) || " (" || put(pct2, 3.) || "%)";
+      col3 = put(count3,3.) || " (" || put(pct3, 3.) || "%)";
+run;
+
+
+**** USE PROC REPORT TO WRITE THE CONMED TABLE TO FILE.; 
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.5.pdf';
+ 
+proc report
+   data=cm
+   nowindows
+   split = "|";
+
+   columns section rowlabel col1 col2 col3;
+
+   define section  /order order = internal noprint;
+   define rowlabel /order width=25 "Preferred Medication Term";
+   define col1     /display center width=14 "Active|N=&n1";
+   define col2     /display center width=14 "Placebo|N=&n2";
+   define col3     /display center width=14 "Total|N=&n3";
+ 
+   compute after section;
+      line '#{newline}';
+   endcomp;
+
+   title1 j=l 'Company/Trial Name' 
+          j=r 'Page #{thispage} of #{lastpage}';
+   title2 j=c 'Table 5.5';
+   title3 j=c 'Summary of Concomitant Medication';
+run; 
+ods pdf close;   
+
+
+**** PROGRAM 5.6;
+**** INPUT TREATMENT CODE DATA AS ADAM ADSL DATA.;
+data ADSL;
+length USUBJID $ 3;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)";
+input USUBJID $ TRTPN @@;
+datalines;
+101 1  102 0  103 0  104 1  105 0  106 0  107 1  108 1  109 1  110 1
+;
+run;
+
+**** INPUT SAMPLE LABORATORY DATA AS SDTM LB DATA;
+data LB;
+label USUBJID     = "Unique Subject Identifier"
+      VISITNUM    = "Visit Number"
+      LBCAT       = "Category for Lab Test"
+      LBTEST      = "Laboratory Test"
+      LBSTRESU    = "Standard Units"
+      LBSTRESN    = "Numeric Result/Finding in Standard Units"
+      LBSTNRLO    = "Reference Range Lower Limit-Std Units"
+      LBSTNRHI    = "Reference Range Upper Limit-Std Units"
+      LBNRIND     = "Reference Range Indicator";
+
+input USUBJID $ 1-3 VISITNUM 6 LBCAT $ 9-18 LBTEST $ 20-29
+      LBSTRESU $ 32-35 LBSTRESN 38-41 LBSTNRLO 45-48 
+      LBSTNRHI 52-55 LBNRIND $ 59;
+datalines;
+101  0  HEMATOLOGY HEMATOCRIT  %     31     35     49     L
+101  1  HEMATOLOGY HEMATOCRIT  %     39     35     49     N
+101  2  HEMATOLOGY HEMATOCRIT  %     44     35     49     N
+101  0  HEMATOLOGY HEMOGLOBIN  g/dL  11.5   11.7   15.9   L
+101  1  HEMATOLOGY HEMOGLOBIN  g/dL  13.2   11.7   15.9   N
+101  2  HEMATOLOGY HEMOGLOBIN  g/dL  14.3   11.7   15.9   N
+102  0  HEMATOLOGY HEMATOCRIT  %     39     39     52     N
+102  1  HEMATOLOGY HEMATOCRIT  %     39     39     52     N
+102  2  HEMATOLOGY HEMATOCRIT  %     44     39     52     N
+102  0  HEMATOLOGY HEMOGLOBIN  g/dL  11.5   12.7   17.2   L
+102  1  HEMATOLOGY HEMOGLOBIN  g/dL  13.2   12.7   17.2   N
+102  2  HEMATOLOGY HEMOGLOBIN  g/dL  18.3   12.7   17.2   H
+103  0  HEMATOLOGY HEMATOCRIT  %     50     35     49     H
+103  1  HEMATOLOGY HEMATOCRIT  %     39     35     49     N
+103  2  HEMATOLOGY HEMATOCRIT  %     55     35     49     H
+103  0  HEMATOLOGY HEMOGLOBIN  g/dL  12.5   11.7   15.9   N
+103  1  HEMATOLOGY HEMOGLOBIN  g/dL  12.2   11.7   15.9   N
+103  2  HEMATOLOGY HEMOGLOBIN  g/dL  14.3   11.7   15.9   N
+104  0  HEMATOLOGY HEMATOCRIT  %     55     39     52     H
+104  1  HEMATOLOGY HEMATOCRIT  %     45     39     52     N
+104  2  HEMATOLOGY HEMATOCRIT  %     44     39     52     N
+104  0  HEMATOLOGY HEMOGLOBIN  g/dL  13.0   12.7   17.2   N
+104  1  HEMATOLOGY HEMOGLOBIN  g/dL  13.3   12.7   17.2   N
+104  2  HEMATOLOGY HEMOGLOBIN  g/dL  12.8   12.7   17.2   N
+105  0  HEMATOLOGY HEMATOCRIT  %     36     35     49     N
+105  1  HEMATOLOGY HEMATOCRIT  %     39     35     49     N
+105  2  HEMATOLOGY HEMATOCRIT  %     39     35     49     N
+105  0  HEMATOLOGY HEMOGLOBIN  g/dL  13.1   11.7   15.9   N
+105  1  HEMATOLOGY HEMOGLOBIN  g/dL  14.0   11.7   15.9   N
+105  2  HEMATOLOGY HEMOGLOBIN  g/dL  14.0   11.7   15.9   N
+106  0  HEMATOLOGY HEMATOCRIT  %     53     39     52     H
+106  1  HEMATOLOGY HEMATOCRIT  %     50     39     52     N
+106  2  HEMATOLOGY HEMATOCRIT  %     53     39     52     H
+106  0  HEMATOLOGY HEMOGLOBIN  g/dL  17.0   12.7   17.2   N
+106  1  HEMATOLOGY HEMOGLOBIN  g/dL  12.3   12.7   17.2   L
+106  2  HEMATOLOGY HEMOGLOBIN  g/dL  12.9   12.7   17.2   N
+107  0  HEMATOLOGY HEMATOCRIT  %     55     39     52     H
+107  1  HEMATOLOGY HEMATOCRIT  %     56     39     52     H
+107  2  HEMATOLOGY HEMATOCRIT  %     57     39     52     H
+107  0  HEMATOLOGY HEMOGLOBIN  g/dL  18.0   12.7   17.2   N
+107  1  HEMATOLOGY HEMOGLOBIN  g/dL  18.3   12.7   17.2   H
+107  2  HEMATOLOGY HEMOGLOBIN  g/dL  19.2   12.7   17.2   H
+108  0  HEMATOLOGY HEMATOCRIT  %     40     39     52     N
+108  1  HEMATOLOGY HEMATOCRIT  %     53     39     52     H
+108  2  HEMATOLOGY HEMATOCRIT  %     54     39     52     H
+108  0  HEMATOLOGY HEMOGLOBIN  g/dL  15.0   12.7   17.2   N
+108  1  HEMATOLOGY HEMOGLOBIN  g/dL  18.0   12.7   17.2   H
+108  2  HEMATOLOGY HEMOGLOBIN  g/dL  19.1   12.7   17.2   H
+109  0  HEMATOLOGY HEMATOCRIT  %     39     39     52     N
+109  1  HEMATOLOGY HEMATOCRIT  %     53     39     52     H
+109  2  HEMATOLOGY HEMATOCRIT  %     57     39     52     H
+109  0  HEMATOLOGY HEMOGLOBIN  g/dL  13.0   12.7   17.2   N
+109  1  HEMATOLOGY HEMOGLOBIN  g/dL  17.3   12.7   17.2   H
+109  2  HEMATOLOGY HEMOGLOBIN  g/dL  17.3   12.7   17.2   H
+110  0  HEMATOLOGY HEMATOCRIT  %     50     39     52     N
+110  1  HEMATOLOGY HEMATOCRIT  %     51     39     52     N
+110  2  HEMATOLOGY HEMATOCRIT  %     57     39     52     H
+110  0  HEMATOLOGY HEMOGLOBIN  g/dL  13.0   12.7   17.2   N
+110  1  HEMATOLOGY HEMOGLOBIN  g/dL  18.0   12.7   17.2   H
+110  2  HEMATOLOGY HEMOGLOBIN  g/dL  19.0   12.7   17.2   H
+;
+run;
+ 
+proc sort
+   data = lb;
+      by usubjid lbcat lbtest lbstresu visitnum;
+run;
+
+proc sort
+   data = adsl;
+      by usubjid;
+run;
+
+**** MERGE TREATMENT INFORMATION WITH LAB DATA.;
+data lb;
+   merge adsl(in = inadsl) lb(in = inlb);
+      by usubjid;
+
+      if inlb and not inadsl then
+	     put "WARN" "ING: Missing treatment assignment for subject "
+		     usubjid=;
+
+      if inadsl and inlb;
+run;
+
+**** CARRY FORWARD BASELINE LABORATORY ABNORMAL FLAG.;
+data lb;
+   set lb;
+      by usubjid lbcat lbtest lbstresu visitnum;
+
+      retain baseflag " ";
+
+      **** INITIALIZE BASELINE FLAG TO MISSING.;
+      if first.lbtest then
+         baseflag = " ";
+
+      **** AT VISITNUM 0 ASSIGN BASELINE FLAG.;
+      if visitnum = 0 then
+         baseflag = lbnrind;
+run;
+  
+proc sort
+   data = lb;
+      by lbcat lbtest lbstresu visitnum trtpn;
+run;
+
+**** GET COUNTS AND PERCENTAGES FOR SHIFT TABLE.
+**** WE DO NOT WANT COUNTS FOR VISITNUM 0 SO IT IS SUPRESSED.;
+ods listing close;
+ods output CrossTabFreqs = freqs;
+proc freq
+   data=lb(where = (visitnum ne 0));
+      by lbcat lbtest lbstresu visitnum trtpn;
+    
+      tables baseflag*lbnrind;
+run;
+ods output close;
+ods listing;
+
+**** WRITE LAB SHIFT SUMMARY TO FILE USING DATA _NULL_;
+options nodate nonumber;
+title1 "Table 5.6";
+title2 "Laboratory Shift Table";
+title3 " ";
+data _null_;
+   set freqs end = eof;
+      by lbcat lbtest lbstresu visitnum trtpn; 
+
+      **** SUPPRESS TOTALS.;
+      where baseflag ne '' and lbnrind ne '';
+
+      **** SET OUTPUT FILE OPTIONS.;
+      file print titles linesleft = ll pagesize = 50 linesize = 80;
+
+      **** WHEN NEWPAGE = 1, A PAGE BREAK IS INSERTED.;
+      retain newpage 0;
+ 
+      **** WRITE THE HEADER OF THE TABLE TO THE PAGE.;
+      if _n_ = 1 or newpage = 1 then 
+         put @1 "-----------------------------------" 
+                "-----------------------------------" /
+             @1 lbcat ":" @39 "Baseline Value" /
+             @1 lbtest 
+             @17 "------------------------------------------------------" /
+             @1 "(" lbstresu ")" @25 "Placebo" @55 "Active" /
+             @17 "--------------------------  "
+                 "--------------------------" /
+             @20 "Low     Normal    High      Low     Normal    High" /
+             @1 "-----------------------------------" 
+                "-----------------------------------" /;
+ 
+      **** RESET NEWPAGE TO ZERO.;
+      newpage = 0;
+
+      **** DEFINE ARRAY VALUES WHICH REPRESENTS THE 3 ROWS AND
+      **** 6 COLUMNS FOR ANY GIVEN visitnum.;
+      array values {3,6} $10 _temporary_;
+
+      **** INITIALIZE ARRAY TO "0(  0%)".;
+      if first.visitnum then
+         do i = 1 to 3;
+            do j = 1 to 6;
+               values(i,j) = "0(  0%)";
+	      end;
+	   end;
+
+      **** LOAD FREQUENCY/PRECENTS FROM FREQS DATA SET TO 
+      **** THE PROPER PLACE IN THE VALUES ARRAY.;  
+      values( sum((lbnrind = "L") * 1,(lbnrind = "N") * 2,
+                  (lbnrind = "H") * 3) ,
+              sum((baseflag = "L") * 1,(baseflag = "N") * 2,
+                  (baseflag = "H") * 3) + (trtpn * 3)) = 
+         put(frequency,2.) || "(" || put(percent,3.) || "%)";
+
+      **** ONCE ALL DATA HAS BEEN LOADED INTO THE ARRAY FOR THE visitnum,
+      **** PUT THE DATA ON THE PAGE.;
+      if last.visitnum then
+         do;
+            put @1 "Week " visitnum
+                @10 "Low"    @18 values(1,1) @27 values(1,2) 
+                             @36 values(1,3) @46 values(1,4) 
+                             @55 values(1,5) @64 values(1,6) /
+                @10 "Normal" @18 values(2,1) @27 values(2,2) 
+                             @36 values(2,3) @46 values(2,4) 
+                             @55 values(2,5) @64 values(2,6) /
+                @10 "High"   @18 values(3,1) @27 values(3,2) 
+                             @36 values(3,3) @46 values(3,4) 
+                             @55 values(3,5) @64 values(3,6) /; 
+
+            **** IF IT IS THE END OF THE FILE, PUT A DOUBLE LINE.;
+            if eof then
+               put @1 "-----------------------------------" 
+                   "-----------------------------------" /
+                   "-----------------------------------" 
+                   "-----------------------------------" //
+               "Created by %sysfunc(getoption(sysin)) on &sysdate9..";  
+		**** IF ONLY THE LAST VISITNUM IN A TEST, THEN PUT PAGE BREAK.;
+		else if last.lbtest then
+               do;
+                  put @1 "-----------------------------------" 
+                      "-----------------------------------" /
+                      @60 "(CONTINUED)" /
+                      "Created by %sysfunc(getoption(sysin)) on &sysdate9.."
+                      _page_;
+                  newpage = 1;
+               end;
+         end;    
+run;
+
+
+**** PROGRAM 5.7;
+**** INPUT SAMPLE TREATMENT AND TIME TO DEATH DATA AS A SMALL
+**** PART OF AN ADAM ADTTE ANALYSIS DATASET.;
+data ADTTE;
+label TRTA  = "Actual Treatment"
+      AVAL   = "Analysis Value"
+      CNSR   = "Censor";
+input TRTA $ AVAL CNSR @@;
+datalines;
+A  52    0     A  825   1     C  693   1     C  981   1
+B  279   0     B  826   1     B  531   1     B  15    1
+C  1057  1     C  793   1     B  1048  1     A  925   1
+C  470   1     A  251   0     C  830   1     B  668   0
+B  350   1     B  746   1     A  122   0     B  825   1
+A  163   0     C  735   1     B  699   1     B  771   0
+C  889   1     C  932   1     C  773   0     C  767   1
+A  155   1     A  708   1     A  547   1     A  462   0
+B  114   0     B  704   1     C  1044  1     A  702   0
+A  816   1     A  100   0     C  953   1     C  632   1
+C  959   1     C  675   1     C  960   0     A  51    1
+B  33    0     B  645   1     A  56    0     A  980   0
+C  150   1     A  638   1     B  905   1     B  341   0
+B  686   1     B  638   1     A  872   0     C  1347  1
+A  659   1     A  133   0     C  360   1     A  907   0
+C  70    1     A  592   1     B  112   1     B  882   0
+A  1007  1     C  594   1     C  7     1     B  361   1
+B  964   1     C  582   1     B  1024  0     A  540   0
+C  962   1     B  282   1     C  873   1     C  1294  1
+B  961   1     C  521   1     A  268   0     A  657   1
+C  1000  1     B  9     0     A  678   1     C  989   0
+A  910   1     C  1107  1     C  1071  0     A  971   1
+C  89    1     A  1111  1     C  701   1     B  364   0
+B  442   0     B  92    0     B  1079  1     A  93    1
+B  532   0     A  1062  1     A  903   1     C  792   1
+C  136   1     C  154   1     C  845   1     B  52    1
+A  839   1     B  1076  1     A  834   0     A  589   1
+A  815   1     A  1037  1     B  832   1     C  1120  1
+C  803   1     C  16    0     A  630   1     B  546   1
+A  28    0     A  1004  1     B  1020  1     A  75    1
+C  1299  1     B  79    1     C  170   1     B  945   1
+B  1056  1     B  947   1     A  1015  1     A  190   0
+B  1026  1     C  128   0     B  940   1     C  1270  1
+A  1022  0     A  915   1     A  427   0     A  177   0
+C  127   1     B  745   0     C  834   1     B  752   1
+A  1209  1     C  154   1     B  723   1     C  1244  1
+C  5     1     A  833   1     A  705   1     B  49    1
+B  954   1     B  60    0     C  705   1     A  528   1
+A  952   1     C  776   1     B  680   1     C  88    1
+C  23    1     B  776   1     A  667   1     C  155   1
+B  946   1     A  752   1     C  1076  1     A  380   0
+B  945   1     C  722   1     A  630   1     B  61    0
+C  931   1     B  2     1     B  583   1     A  282   0
+A  103   0     C  1036  1     C  599   1     C  17    1
+C  910   1     A  760   1     B  563   1     B  347   0
+B  907   1     B  896   1     A  544   1     A  404   0
+A  8     0     A  895   1     C  525   1     C  740   1
+C  11    1     C  446   0     C  522   1     C  254   1
+A  868   1     B  774   1     A  500   1     A  27    1
+B  842   1     A  268   0     B  505   1     B  505   0
+; 
+run;
+  
+
+**** PERFORM LIFETEST AND EXPORT SURVIVAL ESTIMATES TO 
+**** SURVEST DATA SET.;
+ods listing close;
+ods output ProductLimitEstimates = survivalest;
+proc lifetest
+   data=adtte;
+    
+   time aval * cnsr(1);
+   strata trta;
+run;
+ods output close;
+ods listing;
+  
+ 
+data survivalest;
+   set survivalest; 
+ 
+   **** CALCULATE VISIT WINDOW (MONTHS);
+   if aval = 0 then
+      visit = 0;    **** Baseline;
+   else if 1 <= aval <= 91 then
+      visit = 91;   **** 3 Months;
+   else if 92 <= aval <= 183 then
+      visit = 183;  **** 6 Months;
+   else if 184 <= aval <= 365 then
+      visit = 365;  **** 1 Year;
+   else if 366 <= aval <= 731 then
+      visit = 731;  **** 2 Years;
+   else if 732 <= aval <= 1096 then
+      visit = 1096; **** 3 Years;
+   else if 1097 <= aval <= 1461 then
+      visit = 1461; **** 4 Years;
+   else 
+      put "ERR" "OR: event data beyond visit mapping " 
+          aval = ;
+run;
+
+proc sort
+   data = survivalest;
+      by trta visit aval;
+run;
+  
+**** CREATE 95% CONFIDENCE INTERVAL AROUND THE ESTIMATE 
+**** AND RETAIN PROPER SURVIVAL ESTIMATE FOR TABLE.;
+data survivalest;
+   set survivalest;
+      by trta visit aval;
+
+      keep trta visit count left survprob lcl ucl; 
+      retain count survprob lcl ucl;
+
+	  **** INITIALIZE VARIABLES TO MISSING FOR EACH TREATMENT.;
+      if first.trta then
+         do;                
+            survprob = .;
+            count = .;
+            lcl = .;
+            ucl = .;
+         end;
+        
+      **** CARRY FORWARD OBSERVATIONS WITH AN ESTIMATE.;
+      if survival ne . then
+         do;
+            count = failed;
+            survprob = survival;           
+  		    **** SUPPRESS CONFIDENCE INTERVALS AT BASELINE.;
+            if visit ne 0 and stderr ne . then
+               do;
+                  lcl = survival - (stderr*1.96);
+                  ucl = survival + (stderr*1.96);
+               end;
+         end;
+    
+      **** KEEP ONE RECORD PER VISIT WINDOW.; 
+      if last.visit;
+run;
+
+proc sort
+   data = survivalest;
+      by visit;
+run;
+
+**** COLLAPSE TABLE BY TREATMENT.  THIS IS DONE BY MERGING THE 
+**** SURVIVALEST DATA SET AGAINST ITSELF 3 TIMES.;
+data table;
+  merge survivalest
+        (where=(trta="A")
+         rename =(count=count_a left=left_a
+                  survprob=survprob_a lcl=lcl_a ucl=ucl_a))
+        survivalest
+        (where=(trta="B")
+         rename =(count=count_b left=left_b
+                  survprob=survprob_b lcl=lcl_b ucl=ucl_b))
+        survivalest
+        (where=(trta="C")
+         rename =(count=count_c left=left_c
+                  survprob=survprob_c lcl=lcl_c ucl=ucl_c));
+      by visit;
+run;
+ 
+**** CREATE VISIT FORMAT USED IN TABLE.;
+proc format;
+   value visit
+      0    = "Baseline"
+      91   = "3 Months"
+	  183  = "6 Months"
+	  365  = "1 Year"
+	  731  = "2 Years"
+	  1096 = "3 Years"
+	  1461 = "4 Years";
+run;
+		 
+**** CREATE SUMMARY WITH PROC REPORT;
+options nodate nonumber missing = ' ';
+ods escapechar='#';
+ods pdf style=htmlblue file='program5.7.pdf';
+
+proc report
+   data = table
+   nowindows
+   split = "|";
+
+   columns (visit 
+           ("Placebo" count_a left_a survprob_a 
+                         ("95% CIs" lcl_a ucl_a))
+           ("Old Drug" count_b left_b survprob_b 
+                         ("95% CIs" lcl_b ucl_b))
+           ("New Drug" count_c left_c survprob_c 
+                          ("95% CIs" lcl_c ucl_c)) );
+
+    define visit      /order order = internal "Visit" left 
+                       format = visit.;
+    define count_a    /display "Cum. Deaths" width = 6 
+                       format = 3. center;
+    define left_a     /display "Remain at Risk" width = 6 
+                       format = 3. center spacing = 0;
+    define survprob_a /display "Surv- ival Prob." center 
+                       format = pvalue5.3;
+    define lcl_a      /display "Lower" format = 5.3;
+    define ucl_a      /display "Upper" format = 5.3;
+    define count_b    /display "Cum. Deaths" width = 6 
+                       format = 3. center;
+    define left_b     /display "Remain at Risk" width = 6 
+                       format = 3. center spacing = 0;
+    define survprob_b /display "Surv- ival Prob." center 
+                       format = pvalue5.3;
+    define lcl_b      /display "Lower" format = 5.3;
+    define ucl_b      /display "Upper" format = 5.3;
+    define count_c    /display "Cum. Deaths" width = 6 
+                       format = 3. center;
+    define left_c     /display "Remain at Risk" width = 6 
+                       format = 3. center spacing = 0;
+    define survprob_c /display "Surv- ival Prob." center 
+                       format = pvalue5.3;
+    define lcl_c      /display "Lower" format = 5.3;
+    define ucl_c      /display "Upper" format = 5.3;
+
+    break after visit / skip;
+ 
+    title1 j=l 'Company/Trial Name' 
+           j=r 'Page #{thispage} of #{lastpage}';
+    title2 j=c 'Table 5.7';
+    title3 j=c 'Kaplan-Meier Survival Estimates for Death Over Time';
+    footnote1 "Created by %sysfunc(getoption(sysin)) on &sysdate9..";  
+run;
+
+ods pdf close;
+
+
+**** PROGRAM 5.8;
+**** INPUT SAMPLE DEMOGRAPHICS DATA AS CDISC ADaM ADSL;
+data ADSL;
+label USUBJID = "Unique Subject Identifier"
+      TRTPN   = "Planned Treatment (N)"
+      SEXN    = "Sex (N)"
+      RACEN   = "Race (N)"
+      AGE     = "Age";
+input USUBJID $ TRTPN SEXN RACEN AGE @@;
+datalines;
+101 0 1 3 37  301 0 1 1 70  501 0 1 2 33  601 0 1 1 50  701 1 1 1 60
+102 1 2 1 65  302 0 1 2 55  502 1 2 1 44  602 0 2 2 30  702 0 1 1 28
+103 1 1 2 32  303 1 1 1 65  503 1 1 1 64  603 1 2 1 33  703 1 1 2 44
+104 0 2 1 23  304 0 1 1 45  504 0 1 3 56  604 0 1 1 65  704 0 2 1 66
+105 1 1 3 44  305 1 1 1 36  505 1 1 2 73  605 1 2 1 57  705 1 1 2 46
+106 0 2 1 49  306 0 1 2 46  506 0 1 1 46  606 0 1 2 56  706 1 1 1 75
+201 1 1 3 35  401 1 2 1 44  507 1 1 2 44  607 1 1 1 67  707 1 1 1 46
+202 0 2 1 50  402 0 2 2 77  508 0 2 1 53  608 0 2 2 46  708 0 2 1 55
+203 1 1 2 49  403 1 1 1 45  509 0 1 1 45  609 1 2 1 72  709 0 2 2 57
+204 0 2 1 60  404 1 1 1 59  510 0 1 3 65  610 0 1 1 29  710 0 1 1 63
+205 1 1 3 39  405 0 2 1 49  511 1 2 2 43  611 1 2 1 65  711 1 1 2 61
+206 1 2 1 67  406 1 1 2 33  512 1 1 1 39  612 1 1 2 46  712 0 . 1 49
+;
+ 
+ proc sort
+   data = adsl;
+      by trtpn usubjid;
+run;
+
+***** LASTREC VARIABLE IS USED FOR CONTINUING FOOTNOTE.;
+data adsl;
+   set adsl end = eof;
+
+   **** FLAG THE LAST OBSERVATION IN THE DATA SET.;
+   if eof then
+      lastrec = 1;
+run;
+
+
+proc format;
+   value trtpn
+      1 = "Active"
+      0 = "Placebo"; 
+   value sexn
+      . = "Missing"
+      1 = "Male"
+      2 = "Female";
+   value racen
+      1 = "White"
+      2 = "Black"
+      3 = "Other";
+run;
+
+
+**** USE PROC REPORT TO WRITE LISTING OF DEMOGRAPHICS.;
+options formchar="|----|+|---+=|-/\<>*" ls=75 ps=30 
+        missing = " " nodate nonumber;
+proc report
+   data = adsl
+   split = "|"
+   spacing = 3
+   missing
+   nowindows
+   headline;
+
+   columns ("--" lastrec trtpn usubjid sexn racen age);
+
+   define lastrec /display noprint;
+   define trtpn   /order order=internal 
+                   left width = 10 "Treatment" f = trtpn.;
+   define usubjid /order center width = 7  "Subject|ID";
+   define sexn    /display center width = 10 "Sex" f = sexn.;
+   define racen   /display center width = 10 "Race" f = racen.;
+   define age     /display center width = 10 "Age" f = 3.;
+
+   **** COMPUTE BLOCK TO PUT CONTINUING TEXT TO PAGE.;
+   compute after _page_ / left;
+   if not lastrec then 
+      contline = "(Continued)"; 
+   else 
+      contline = "-----------"; 
+
+   line @9 "------------------------------------------------" 
+           contline $11.;
+   endcomp;
+
+   title1 "Listing 5.8";
+   title2 "Subject Demographics";
+   footnote1 "Created by %sysfunc(getoption(sysin)) on"
+             " &sysdate9..";  
+run;
+              
+
+**** PROGRAM 6.1;
+**** INPUT SAMPLE HEMATOCRIT LAB DATA AS ADLB.;
+data ADLB;
+label USUBJID = "Unique Subject Identifier"
+      PARAMCD = "Parameter Code"
+      BASE    = "Baseline Value"
+      AVAL    = "Analysis Value"
+      TRTP    = "Planned Treatment";
+input USUBJID $ PARAMCD $ AVAL BASE TRTP $ @@;
+datalines;
+101 HCT 35.0 31.0 a    102 HCT 40.2 30.0 a 
+103 HCT 42.0 42.4 b    104 HCT 41.2 41.4 b 
+105 HCT 35.0 33.3 a    106 HCT 34.3 34.3 a 
+107 HCT 30.3 44.0 b    108 HCT 34.2 42.0 b 
+109 HCT 40.0 41.1 b    110 HCT 41.0 42.1 b 
+111 HCT 33.3 33.8 a    112 HCT 34.0 31.0 a 
+113 HCT 34.0 41.0 b    114 HCT 34.0 40.0 b 
+115 HCT 37.2 35.2 a    116 HCT 39.3 36.2 a 
+117 HCT 36.3 38.3 b    118 HCT 37.4 37.3 b 
+119 HCT 44.2 34.3 a    120 HCT 42.2 36.5 a 
+;
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED SYMBOLS;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / markersymbol='circle'
+                     contrastcolor=black;
+  class GraphData2 / markersymbol='plus'
+                     contrastcolor=black;
+
+ end;
+run;
+
+
+**** CREATE THE PLOT DESIRED WITH PROC SGPLOT;
+ods html 
+ path="C:\figure6.1"            
+ file="figure6.1.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_1" outputfmt=png;
+
+
+**** CREATE SCATTER PLOT;
+proc sgplot
+  data=adlb;
+  scatter x = aval
+          y = base / group=trtp;
+  xaxis values = (30 35 40 45) minorcount=4;
+  yaxis values = (30 35 40 45) minorcount=4;
+  lineparm x=30 y=30 slope=1;
+title1 "Hematocrit (%) Scatter Plot";
+title2 "At Visit 3";
+run;
+
+ods graphics off;
+ods html close;
+
+
+**** PROGRAM 6.2;
+**** INPUT SAMPLE MEAN CLINICAL RESPONSE VALUES AS ADEFF.;
+data ADEFF;
+label AVAL    = "Analysis Value"
+      AVISITN = "Analysis Visit (N)"
+      TRTPN   = "Planned Treatment (N)";
+input TRTPN AVISITN AVAL @@;
+datalines;
+1  0 9.40    2  0 9.55
+1  1 9.35    2  1 9.45
+1  2 8.22    2  2 8.78
+1  3 6.33    2  3 8.23
+1  4 4.00    2  4 7.77
+1  5 2.22    2  5 4.46
+1  6 1.44    2  6 2.00
+1  7 1.13    2  7 1.86
+1  8 0.55    2  8 1.44
+1  9 0.67    2  9 1.33
+1 10 0.45    2 10 1.01
+;
+run;
+ 
+**** CREATE FORMATS TO BE USED IN PLOT.;
+proc format;
+   value avisitn
+      0 = "Baseline"
+      1 = "Day 1"
+      2 = "Day 2"
+      3 = "Day 3"
+      4 = "Day 4"
+      5 = "Day 5"
+      6 = "Day 6"
+      7 = "Day 7"
+      8 = "Day 8"
+      9 = "Day 9"
+      10 = "Day 10";
+   value trtpn
+      1 = "Super Drug"
+      2 = "Old Drug";
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED SYMBOLS/LINES;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / markersymbol='circlefilled'
+                     linestyle=1
+                     contrastcolor=black;
+  class GraphData2 / markersymbol='circle'
+                     linestyle=2
+                     contrastcolor=black;
+ end;
+run;
+
+
+**** CREATE LINE PLOT USING PROC SGPLOT;
+ods html 
+path="C:\figure6.2"         file="figure6.2.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_2" outputfmt=png;
+
+**** PRODUCE LINE PLOT;
+proc sgplot 
+  data=adeff;
+                                         
+   series x=avisitn y=aval / group=trtpn markers 
+          name="customlegend" legendlabel="Treatment";
+                                                                                
+   refline 1 / axis=x;                                                                                                               
+   yaxis values=(0 to 10 by 1)  
+         display=(noticks)
+         label='Mean Clinical Response';     
+                                                           
+   xaxis values=(0 to 10 by 1) 
+         label='Visit';               
+
+   keylegend "customlegend" / location=inside position=topright;                                
+
+   format avisitn avisitn.
+          trtpn trtpn.;
+
+   title1 "Mean Clinical Response by Visit";                                         
+run;    
+
+ods html close;
+
+
+**** PROGRAM 6.3;
+**** INPUT SAMPLE PAIN SCALE DATA AS CDISC ADAM ADPAIN DATASET;
+data ADPAIN;
+label USUBJID  = "Unique Subject Identifier"
+      AVALCAT1 = "Analysis Category 1"
+      TRTPN    = "Planned Treatment (N)";
+input USUBJID $ AVALCAT1 TRTPN @@;
+datalines;
+113 1 1    420 1 2    780 0 3
+121 1 1    423 0 2    784 0 3
+122 1 1    465 4 2    785 1 3
+124 4 1    481 3 2    786 3 3
+164 4 1    482 0 2    787 0 3
+177 4 1    483 0 2    789 0 3
+178 0 1    484 0 2    790 2 3
+179 1 1    485 0 2    791 0 3
+184 0 1    486 1 2    793 3 3
+185 0 1    487 0 2    794 2 3
+186 3 1    489 0 2    795 1 3
+187 0 1    490 1 2    796 4 3
+188 1 1    491 0 2    797 2 3
+189 3 1    493 2 2    798 1 3
+190 3 1    494 1 2    799 2 3
+191 2 1    495 0 2    800 2 3
+192 3 1    496 2 2    822 1 3
+193 4 1    498 0 2    841 1 3
+194 4 1    499 2 2    842 1 3
+195 0 1    500 2 2    847 2 3
+196 4 1    521 1 2    863 1 3
+197 1 1    522 1 2    881 2 3
+198 4 1    541 1 2    966 1 3
+199 3 1    542 0 2    967 0 3
+100 4 1    561 3 2    968 0 3
+121 2 1    562 2 2    981 1 3
+122 2 1    581 2 2    982 1 3
+123 4 1    561 1 2    985 0 3
+124 2 1    564 1 2    986 0 3
+141 3 1    566 1 2    987 0 3
+142 2 1    567 2 2    989 2 3
+143 2 1    568 2 2    990 3 3
+147 4 1    569 0 2    991 0 3
+161 4 1    581 0 2    992 2 3
+162 4 1    582 3 2    993 1 3
+163 4 1    584 1 2    994 0 3
+164 0 1    585 0 2    995 1 3
+165 2 1    586 1 2    996 0 3
+166 1 1    587 1 2    997 3 3
+167 3 1    591 1 2    998 0 3
+181 2 1    592 1 2    999 0 3
+221 4 1    594 1 2    706 0 3
+281 4 1    595 0 2    707 3 3
+282 4 1    596 0 2    708 1 3
+361 4 1    597 0 2    709 0 3
+362 4 1    601 0 2    710 1 3
+364 3 1    602 1 2    711 1 3
+365 4 1    603 2 2    712 0 3
+366 3 1    604 1 2    713 4 3
+367 4 1    605 1 2    714 0 3
+;
+
+
+
+**** MAKE FORMATS FOR CHART.;
+proc format;
+   value trtpn
+      1 = 'Placebo'
+      2 = 'Old Drug'
+      3 = 'New Drug' ;
+
+   value avalcat
+      0 = '0  '
+      1 = '1-2'
+      2 = '3-4'
+      3 = '5-6'
+      4 = '7-8';
+
+   picture newpct (round)
+      0 = " "
+      0 < - < .5 = "<1%"
+      .6 < - high = "000%";
+run;
+ 
+proc sort
+   data = adpain;
+      by trtpn;
+run;
+
+**** GET FREQUENCY COUNTS FOR CHART AND PLACE IN FREQOUT DATA SET.;
+proc freq
+   data = adpain 
+   noprint;
+      by trtpn;
+
+      tables avalcat1 /out = freqout;
+run;
+
+
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+**** CREATE;
+ods html 
+path="C:\figure6.3"         
+file="figure6.3.html" image_dpi=300 style=htmlblue;
+
+ods graphics on / reset imagename="figure6_3" outputfmt=png attrpriority=color;
+
+****  PRODUCE THE VERTICAL BAR CHART;
+proc sgpanel
+  data=freqout
+  cycleattrs
+  noautolegend;
+
+  **** PANEL BY TREATMENT;  
+  panelby trtpn /layout=columnlattice novarname onepanel colheaderpos=bottom;
+  styleattrs  
+     datacolors=(white gray black) ;
+
+  **** CREATE VERICAL BARS;
+  vbarparm category=avalcat1 response=percent / datalabel group=trtpn;
+
+  rowaxis values=(0 to 50 by 10) label="Percentage of Patients";   
+                                                            
+  colaxis label="Pain Score" labelpos=right;            
+
+  format percent newpct. trtpn trtpn. avalcat1 avalcat.;
+
+  title1 "Summary of Pain Score by Treatment";         
+run;    
+
+
+ods html close;
+
+
+
+**** PROGRAM 6.4;
+**** INPUT SAMPLE PAIN SCALE DATA AS CDISC ADAM ADSEIZ DATA;
+data ADSEIZ;
+label AVAL    = 'Analysis Value' 
+      /* where AVAL = "Seizures per Hour" */
+      AVISITN = 'Analysis Visit (N)'
+      TRTPN   = 'Planned Treatment (N)';
+input TRTPN AVISITN AVAL @@;
+datalines;
+1 2 1.5    2 1 3      2 2 1.8
+2 1 2.6    2 2 2      2 3 2
+1 1 2.8    2 3 2.6    1 1 3
+1 2 2.2    1 1 2.4    2 1 3.2
+2 1 3.2    1 2 1.4    1 1 2.6
+2 2 2.1    1 3 1.8    1 2 1.2
+1 1 2.6    2 1 3      1 3 1.8
+2 1 2.2    1 1 3.6    2 1 2.1
+2 2 3.2    1 2 2      2 2 1
+1 1 2.6    1 3 3.6    2 3 1.8
+1 2 2.2    2 1 3.6    1 1 2.6
+1 3 2.2    2 2 2.6    2 1 4
+2 1 2.8    2 3 2      2 3 3.6
+2 2 2.6    1 1 2.8    1 1 3.4
+2 3 2.6    1 2 1.8    1 2 3
+1 1 2.0    1 3 1.6    2 1 3.4
+1 2 2.4    2 1 3.8    2 2 2
+2 1 2.1    2 2 3      1 1 2.6
+2 2 1.2    2 3 3.4    1 3 1.8
+2 3 1      1 1 4      2 1 2.0
+1 1 2.9    1 3 3.4    1 1 2.8
+1 2 1.6    2 1 2.8    2 1 2.4
+1 3 1.2    2 2 1.2    1 1 3.6
+2 1 2.8    2 3 1.2    2 1 3.2
+2 2 2.6    1 1 1.8    2 2 2.2
+2 3 3.2    1 2 2      2 3 3.2
+1 1 2.8    1 3 2.2    1 1 4
+1 2 1.4    2 1 3      2 1 3.2
+1 3 2      2 2 1.4    1 1 2.4
+2 1 1.6    2 3 1.4    2 1 4
+1 1 2.8    1 1 3.6    2 2 2.2
+1 2 1.4    1 2 1.4    1 1 4
+1 3 1.2    2 1 2.2
+;
+run;
+
+
+**** FORMATS FOR THE PLOT;
+proc format;
+  value trtpn
+     1 = "Active"
+     2 = "Placebo";
+  value avisitn
+     1 = 'Baseline'
+     2 = '6 Months'
+     3 = '9 Months';
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED SYMBOLS AND LINES;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / markersymbol='EarthFilled'
+                     contrastcolor=black
+                     linestyle=2;
+  class GraphData2 / markersymbol='EarthFilled'
+                     contrastcolor=black
+                     linestyle=1;
+ end;
+run;
+
+ods html 
+ path="C:\figure6.4"
+ file="figure6.4.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_4" outputfmt=png;
+
+
+**** CREATE BOX PLOT;
+proc sgplot
+  data=adseiz;
+
+  vbox aval /category=avisitn group=trtpn 
+             nofill capshape=line connect=median 
+             grouporder=ascending extreme nooutliers;
+
+  xaxis label='Visit';
+  yaxis values = (1 to 4 by 1) minorcount=3 label='Seizures per Hour';        
+
+  format trtpn trtpn. avisitn avisitn.;
+  label trtpn = "Treatment";
+
+  title1 "Seizures Per Hour by Treatment";  
+  footnote1 j=l "Box extends to 25th and 75th percentile. Whiskers extend to"
+                " minimum and maximum values. Mean values are represented by"
+                " a dot while medians are connected by the line.";   
+run;    
+
+
+ods html close;
+
+
+
+**** PROGRAM 6.5;
+**** INPUT SAMPLE PAIN DATA AS CDISC ADAM ADPAIN DATASET.;
+data ADPAIN;
+label AVAL  = "Analysis Value" /* theraputic success */
+      TRTPN = "Planned Treatment (N)"
+      SEXN   = "Male"
+      RACEN  = "Race (N)"
+      BASEPAIN = "Baseline Pain Score";
+input AVAL TRTPN SEXN RACEN BASEPAIN @@;
+datalines;
+1 0 1 3 20   1 0 1 1 31   1 0 1 2 40   1 0 1 1 50   1 1 2 1 60   
+1 1 2 1 22   0 0 1 2 23   1 1 2 1 20   0 0 2 2 20   0 0 2 1 23   
+1 0 2 2 20   1 1 1 1 25   1 1 1 1 20   1 1 2 1 20   1 1 2 2 20   
+1 1 1 1 10   1 0 2 1 25   0 0 1 3 40   1 0 1 1 20   1 0 1 1 20   
+0 0 1 3 24   1 1 1 1 30   0 1 1 2 20   0 1 2 1 21   0 1 1 2 34   
+0 0 2 1 20   1 0 1 2 20   1 0 1 1 20   1 0 1 2 20   1 1 2 1 55   
+1 1 1 3 22   1 1 1 1 34   1 1 1 2 40   1 1 1 1 50   1 1 1 1 60   
+0 0 2 1 20   0 0 2 2 20   0 0 2 1 20   0 0 2 2 20   0 0 1 1 20   
+1 1 1 2 25   1 1 1 1 23   1 0 2 1 20   1 1 2 1 20   1 0 1 2 22   
+1 0 1 1 11   1 0 1 1 33   0 0 2 3 40   1 0 1 1 20   0 1 1 1 21   
+1 1 2 3 24   1 0 2 1 30   1 1 1 2 20   1 1 2 1 21   0 1 1 2 33   
+0 0 2 1 20   1 1 1 2 22   1 1 2 1 20   1 1 1 2 20   1 0 1 1 50   
+0 0 1 1 55   0 0 1 2 12   0 1 1 1 20   1 1 1 2 22   1 1 1 1 12   
+;
+ 
+ 
+**** GET ADJUSTED ODDS RATIOS FROM PROC LOGISTIC AND PLACE
+**** THEM IN DATA SET WALD.; 
+ods output CLoddsWald=odds;
+proc logistic
+   data = adpain;
+
+   model aval(event='1') = basepain sexn racen trtpn / clodds = wald; 
+run; 
+ods output close;
+
+***** RECATEGORIZE EFFECT FOR Y AXIS FORMATING PURPOSES.; 
+data odds;
+   set odds;
+
+   select(effect);
+      when("BASEPAIN") y = 1;
+      when("SEXN")     y = 2;
+      when("RACEN")    y = 3;
+      when("TRTPN")    y = 4;
+      otherwise;
+   end;
+run;
+
+ods listing;
+
+
+**** FORMAT FOR EFFECT ON Y AXIS;
+proc format;
+   value effect
+      1 = "Baseline Pain (continuous)"
+      2 = "Male vs. Female"
+      3 = "White vs. Black"
+      4 = "Active Therapy vs. Placebo";
+run;
+
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+ods html 
+path="C:\figure6.5"         file="figure6.5.html" image_dpi=300 style=htmlblue;
+
+ods graphics on / reset imagename="figure6_5" outputfmt=png;
+
+**** PRODUCE ODDS RATIO PLOT;
+proc sgplot 
+  data=odds
+  noautolegend;
+                                         
+   scatter y=y x=oddsratioest / xerrorupper=uppercl xerrorlower=lowercl 
+           errorbarattrs=(thickness=2.5 color=black)
+           markerattrs=graphdata1(size=0);             
+   scatter y=y x=oddsratioest /  
+           markerattrs=graphdata1(symbol=circlefilled color=black size=8); 
+                                                                                
+   refline 1 / axis=x;                                                                                                               
+   yaxis values=(1 to 4 by 1)  
+         display=(noticks nolabel);     
+                                                           
+   xaxis type=log logbase=2 values=(0.125 0.25 0.5 1 2 4 8 16) 
+         label='Odds Ratio and 95% Confidence Interval' ;                                               
+
+   format y effect.;
+
+   title1 "Odds Ratios for Clinical Success";                                         
+run;    
+
+ods html close;
+
+
+**** PROGRAM 6.6;
+**** INPUT SAMPLE PAIN DATA AS CDISC ADAM ADPAIN DATASET.;
+data ADPAIN;
+label AVAL  = "Analysis Value" /* theraputic success */
+      TRTPN = "Planned Treatment (N)"
+      SEXN   = "Male"
+      RACEN  = "Race (N)"
+      BASEPAIN = "Baseline Pain Score";
+input AVAL TRTPN SEXN RACEN BASEPAIN @@;
+datalines;
+1 0 1 3 20   1 0 1 1 31   1 0 1 2 40   1 0 1 1 50   1 1 2 1 60   
+1 1 2 1 22   0 0 1 2 23   1 1 2 1 20   0 0 2 2 20   0 0 2 1 23   
+1 0 2 2 20   1 1 1 1 25   1 1 1 1 20   1 1 2 1 20   1 1 2 2 20   
+1 1 1 1 10   1 0 2 1 25   0 0 1 3 40   1 0 1 1 20   1 0 1 1 20   
+0 0 1 3 24   1 1 1 1 30   0 1 1 2 20   0 1 2 1 21   0 1 1 2 34   
+0 0 2 1 20   1 0 1 2 20   1 0 1 1 20   1 0 1 2 20   1 1 2 1 55   
+1 1 1 3 22   1 1 1 1 34   1 1 1 2 40   1 1 1 1 50   1 1 1 1 60   
+0 0 2 1 20   0 0 2 2 20   0 0 2 1 20   0 0 2 2 20   0 0 1 1 20   
+1 1 1 2 25   1 1 1 1 23   1 0 2 1 20   1 1 2 1 20   1 0 1 2 22   
+1 0 1 1 11   1 0 1 1 33   0 0 2 3 40   1 0 1 1 20   0 1 1 1 21   
+1 1 2 3 24   1 0 2 1 30   1 1 1 2 20   1 1 2 1 21   0 1 1 2 33   
+0 0 2 1 20   1 1 1 2 22   1 1 2 1 20   1 1 1 2 20   1 0 1 1 50   
+0 0 1 1 55   0 0 1 2 12   0 1 1 1 20   1 1 1 2 22   1 1 1 1 12   
+;
+ 
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+ods graphics on / reset imagename="figure6_6" outputfmt=png;
+
+ods html 
+path="C:\figure6.6"         
+file="figure6.6.html" image_dpi=300 style=htmlblue;
+
+**** GETS ODDS RATIO PLOT;
+ods select orplot;
+proc logistic
+   data = adpain
+   plots=oddsratio(logbase=2 range=(0.125,16) 
+                    type=horizontal);
+
+   model aval(event='1') = basepain sexn racen trtpn / clodds = wald; 
+run; 
+ods graphics off;
+ods html close;
+ 
+
+**** PROGRAM 6.7;
+**** INPUT SAMPLE TIME TO DEATH AS CDISC ADAM ADDEATH DATA;
+data ADDEATH;
+label TRTP = "Planned Treatment"
+      AVAL = "Analysis Value" /* "Days to Death" */
+      CNSR = "Censor";
+input TRTP $ AVAL CNSR @@;
+datalines;
+A  52    0     A  825   1     C  693   1     C  981   1
+B  279   0     B  826   1     B  531   1     B  15    1
+C  1057  1     C  793   1     B  1048  1     A  925   1
+C  470   1     A  251   0     C  830   1     B  668   0
+B  350   1     B  746   1     A  122   0     B  825   1
+A  163   0     C  735   1     B  699   1     B  771   0
+C  889   1     C  932   1     C  773   0     C  767   1
+A  155   1     A  708   1     A  547   1     A  462   0
+B  114   0     B  704   1     C  1044  1     A  702   0
+A  816   1     A  100   0     C  953   1     C  632   1
+C  959   1     C  675   1     C  960   0     A  51    1
+B  33    0     B  645   1     A  56    0     A  980   0
+C  150   1     A  638   1     B  905   1     B  341   0
+B  686   1     B  638   1     A  872   0     C  1347  1
+A  659   1     A  133   0     C  360   1     A  907   0
+C  70    1     A  592   1     B  112   1     B  882   0
+A  1007  1     C  594   1     C  7     1     B  361   1
+B  964   1     C  582   1     B  1024  0     A  540   0
+C  962   1     B  282   1     C  873   1     C  1294  1
+B  961   1     C  521   1     A  268   0     A  657   1
+C  1000  1     B  9     0     A  678   1     C  989   0
+A  910   1     C  1107  1     C  1071  0     A  971   1
+C  89    1     A  1111  1     C  701   1     B  364   0
+B  442   0     B  92    0     B  1079  1     A  93    1
+B  532   0     A  1062  1     A  903   1     C  792   1
+C  136   1     C  154   1     C  845   1     B  52    1
+A  839   1     B  1076  1     A  834   0     A  589   1
+A  815   1     A  1037  1     B  832   1     C  1120  1
+C  803   1     C  16    0     A  630   1     B  546   1
+A  28    0     A  1004  1     B  1020  1     A  75    1
+C  1299  1     B  79    1     C  170   1     B  945   1
+B  1056  1     B  947   1     A  1015  1     A  190   0
+B  1026  1     C  128   0     B  940   1     C  1270  1
+A  1022  0     A  915   1     A  427   0     A  177   0
+C  127   1     B  745   0     C  834   1     B  752   1
+A  1209  1     C  154   1     B  723   1     C  1244  1
+C  5     1     A  833   1     A  705   1     B  49    1
+B  954   1     B  60    0     C  705   1     A  528   1
+A  952   1     C  776   1     B  680   1     C  88    1
+C  23    1     B  776   1     A  667   1     C  155   1
+B  946   1     A  752   1     C  1076  1     A  380   0
+B  945   1     C  722   1     A  630   1     B  61    0
+C  931   1     B  2     1     B  583   1     A  282   0
+A  103   0     C  1036  1     C  599   1     C  17    1
+C  910   1     A  760   1     B  563   1     B  347   0
+B  907   1     B  896   1     A  544   1     A  404   0
+A  8     0     A  895   1     C  525   1     C  740   1
+C  11    1     C  446   0     C  522   1     C  254   1
+A  868   1     B  774   1     A  500   1     A  27    1
+B  842   1     A  268   0     B  505   1     B  505   0
+; 
+run;
+
+proc format;
+   value $trtp
+      "A" = "Placebo"
+      "B" = "Old Drug"
+      "C" = "New Drug";
+run;
+  
+**** PERFORM LIFETEST AND EXPORT SURVIVAL ESTIMATES.;
+ods graphics;
+ods exclude all;
+ods output survivalplot=survivalplot;
+proc lifetest
+   data=addeath plots=(survival);
+    
+   time aval * cnsr(1);
+   strata trtp;
+run;
+ods output close;
+
+
+**** CALCULATE MONTH FOR PLOTTING.;
+data survivalplot;
+   set survivalplot;
+
+      month = (time / 30.417);  *** = 365/12;
+run;
+
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED LINES;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / contrastcolor=black
+                     linestyle=3;
+  class GraphData2 / contrastcolor=black
+                     linestyle=4;
+  class GraphData3 / contrastcolor=black
+                     linestyle=1;
+ end;
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods exclude none;
+ods _all_ close;
+
+**** CREATE THE PLOT DESIRED WITH PROC SGPLOT;
+ods html 
+ path="C:\figure6.7"               
+ file="figure6.7.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_7" outputfmt=png;
+
+**** PRODUCE KAPLAN MEIER PLOT;
+proc sgplot
+  data=survivalplot;
+
+  step x=month y=survival /group=stratum;
+  
+  xaxis values = (0 to 48 by 6) minorcount=1 label='Months from Randomization';
+  yaxis values = (0 to 1 by 0.1) minorcount=1 label='Survival Probability';
+
+label stratum = "Treatment";
+format stratum $trtp.;
+title1 "Kaplan-Meier Survival Estimates for Death";
+run;
+
+ods graphics off;
+ods html close;
+
+
+**** PROGRAM 6.8;
+**** INPUT SAMPLE TIME TO DEATH AS CDISC ADAM ADDEATH DATA;
+data ADDEATH;
+label TRTP = "Planned Treatment"
+      AVAL = "Analysis Value" /* "Days to Death" */
+      CNSR = "Censor";
+input TRTP $ AVAL CNSR @@;
+datalines;
+A  52    0     A  825   1     C  693   1     C  981   1
+B  279   0     B  826   1     B  531   1     B  15    1
+C  1057  1     C  793   1     B  1048  1     A  925   1
+C  470   1     A  251   0     C  830   1     B  668   0
+B  350   1     B  746   1     A  122   0     B  825   1
+A  163   0     C  735   1     B  699   1     B  771   0
+C  889   1     C  932   1     C  773   0     C  767   1
+A  155   1     A  708   1     A  547   1     A  462   0
+B  114   0     B  704   1     C  1044  1     A  702   0
+A  816   1     A  100   0     C  953   1     C  632   1
+C  959   1     C  675   1     C  960   0     A  51    1
+B  33    0     B  645   1     A  56    0     A  980   0
+C  150   1     A  638   1     B  905   1     B  341   0
+B  686   1     B  638   1     A  872   0     C  1347  1
+A  659   1     A  133   0     C  360   1     A  907   0
+C  70    1     A  592   1     B  112   1     B  882   0
+A  1007  1     C  594   1     C  7     1     B  361   1
+B  964   1     C  582   1     B  1024  0     A  540   0
+C  962   1     B  282   1     C  873   1     C  1294  1
+B  961   1     C  521   1     A  268   0     A  657   1
+C  1000  1     B  9     0     A  678   1     C  989   0
+A  910   1     C  1107  1     C  1071  0     A  971   1
+C  89    1     A  1111  1     C  701   1     B  364   0
+B  442   0     B  92    0     B  1079  1     A  93    1
+B  532   0     A  1062  1     A  903   1     C  792   1
+C  136   1     C  154   1     C  845   1     B  52    1
+A  839   1     B  1076  1     A  834   0     A  589   1
+A  815   1     A  1037  1     B  832   1     C  1120  1
+C  803   1     C  16    0     A  630   1     B  546   1
+A  28    0     A  1004  1     B  1020  1     A  75    1
+C  1299  1     B  79    1     C  170   1     B  945   1
+B  1056  1     B  947   1     A  1015  1     A  190   0
+B  1026  1     C  128   0     B  940   1     C  1270  1
+A  1022  0     A  915   1     A  427   0     A  177   0
+C  127   1     B  745   0     C  834   1     B  752   1
+A  1209  1     C  154   1     B  723   1     C  1244  1
+C  5     1     A  833   1     A  705   1     B  49    1
+B  954   1     B  60    0     C  705   1     A  528   1
+A  952   1     C  776   1     B  680   1     C  88    1
+C  23    1     B  776   1     A  667   1     C  155   1
+B  946   1     A  752   1     C  1076  1     A  380   0
+B  945   1     C  722   1     A  630   1     B  61    0
+C  931   1     B  2     1     B  583   1     A  282   0
+A  103   0     C  1036  1     C  599   1     C  17    1
+C  910   1     A  760   1     B  563   1     B  347   0
+B  907   1     B  896   1     A  544   1     A  404   0
+A  8     0     A  895   1     C  525   1     C  740   1
+C  11    1     C  446   0     C  522   1     C  254   1
+A  868   1     B  774   1     A  500   1     A  27    1
+B  842   1     A  268   0     B  505   1     B  505   0
+; 
+run;
+
+proc format;
+   value $trtp
+      "A" = "Placebo"
+      "B" = "Old Drug"
+      "C" = "New Drug";
+run;
+  
+**** PERFORM LIFETEST AND EXPORT SURVIVAL ESTIMATES.;
+ods graphics;
+ods exclude all;
+ods output failureplot=failureplot;
+proc lifetest
+   data=addeath plots=(survival(failure));
+    
+   time aval * cnsr(1);
+   strata trtp;
+run;
+ods output close;
+
+
+**** CALCULATE MONTH FOR PLOTTING.;
+data failureplot;
+   set failureplot;
+
+      month = (time / 30.417);  *** = 365/12;
+run;
+
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED LINES;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / contrastcolor=black
+                     linestyle=3;
+  class GraphData2 / contrastcolor=black
+                     linestyle=4;
+  class GraphData3 / contrastcolor=black
+                     linestyle=1;
+ end;
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods exclude none;
+ods _all_ close;
+
+**** CREATE THE PLOT DESIRED WITH PROC SGPLOT;
+ods html 
+ path="C:\figure6.8"         
+ file="figure6.8.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_8" outputfmt=png;
+
+**** PRODUCE KAPLAN MEIER PLOT;
+proc sgplot
+  data=failureplot;
+
+  step x=month y=_1_survival_ /group=stratum;
+  
+  xaxis values = (0 to 48 by 6) minorcount=1 label='Months from Randomization';
+  yaxis values = (0 to 1 by 0.1) minorcount=1 label='Probability of Death';
+
+label stratum = "Treatment";
+format stratum $trtp.;
+title1 "Kaplan-Meier Failure Estimates for Death";
+run;
+
+ods graphics off;
+ods html close;
+
+
+**** PROGRAM 6.9;
+**** INPUT SAMPLE TIME TO DEATH AS CDISC ADAM ADDEATH DATA;
+data ADDEATH;
+label TRTP = "Planned Treatment"
+      AVAL = "Analysis Value" /* "Days to Death" */
+      CNSR = "Censor";
+input TRTP $ AVAL CNSR @@;
+datalines;
+A  52    0     A  825   1     C  693   1     C  981   1
+B  279   0     B  826   1     B  531   1     B  15    1
+C  1057  1     C  793   1     B  1048  1     A  925   1
+C  470   1     A  251   0     C  830   1     B  668   0
+B  350   1     B  746   1     A  122   0     B  825   1
+A  163   0     C  735   1     B  699   1     B  771   0
+C  889   1     C  932   1     C  773   0     C  767   1
+A  155   1     A  708   1     A  547   1     A  462   0
+B  114   0     B  704   1     C  1044  1     A  702   0
+A  816   1     A  100   0     C  953   1     C  632   1
+C  959   1     C  675   1     C  960   0     A  51    1
+B  33    0     B  645   1     A  56    0     A  980   0
+C  150   1     A  638   1     B  905   1     B  341   0
+B  686   1     B  638   1     A  872   0     C  1347  1
+A  659   1     A  133   0     C  360   1     A  907   0
+C  70    1     A  592   1     B  112   1     B  882   0
+A  1007  1     C  594   1     C  7     1     B  361   1
+B  964   1     C  582   1     B  1024  0     A  540   0
+C  962   1     B  282   1     C  873   1     C  1294  1
+B  961   1     C  521   1     A  268   0     A  657   1
+C  1000  1     B  9     0     A  678   1     C  989   0
+A  910   1     C  1107  1     C  1071  0     A  971   1
+C  89    1     A  1111  1     C  701   1     B  364   0
+B  442   0     B  92    0     B  1079  1     A  93    1
+B  532   0     A  1062  1     A  903   1     C  792   1
+C  136   1     C  154   1     C  845   1     B  52    1
+A  839   1     B  1076  1     A  834   0     A  589   1
+A  815   1     A  1037  1     B  832   1     C  1120  1
+C  803   1     C  16    0     A  630   1     B  546   1
+A  28    0     A  1004  1     B  1020  1     A  75    1
+C  1299  1     B  79    1     C  170   1     B  945   1
+B  1056  1     B  947   1     A  1015  1     A  190   0
+B  1026  1     C  128   0     B  940   1     C  1270  1
+A  1022  0     A  915   1     A  427   0     A  177   0
+C  127   1     B  745   0     C  834   1     B  752   1
+A  1209  1     C  154   1     B  723   1     C  1244  1
+C  5     1     A  833   1     A  705   1     B  49    1
+B  954   1     B  60    0     C  705   1     A  528   1
+A  952   1     C  776   1     B  680   1     C  88    1
+C  23    1     B  776   1     A  667   1     C  155   1
+B  946   1     A  752   1     C  1076  1     A  380   0
+B  945   1     C  722   1     A  630   1     B  61    0
+C  931   1     B  2     1     B  583   1     A  282   0
+A  103   0     C  1036  1     C  599   1     C  17    1
+C  910   1     A  760   1     B  563   1     B  347   0
+B  907   1     B  896   1     A  544   1     A  404   0
+A  8     0     A  895   1     C  525   1     C  740   1
+C  11    1     C  446   0     C  522   1     C  254   1
+A  868   1     B  774   1     A  500   1     A  27    1
+B  842   1     A  268   0     B  505   1     B  505   0
+; 
+run;
+
+proc format;
+   value $trtp
+      "A" = "Placebo"
+      "B" = "Old Drug"
+      "C" = "New Drug";
+
+   value stratumnum
+      1 = "Placebo at Risk"
+      2 = "Old Drug at Risk"
+      3 = "New Drug at Risk";
+run;
+
+DATA ADDEATH;
+sET ADDEATH;
+month = (aval / 30.417);  *** = 365/12;
+RUN;
+  
+**** PERFORM LIFETEST AND EXPORT SURVIVAL ESTIMATES.;
+ods graphics;
+ods exclude all;
+ods output survivalplot=survivalplot;
+proc lifetest
+   data=addeath plots=(survival(atrisk=0 to 48 by 6));
+    
+   time month * cnsr(1);
+   strata trtp;
+run;
+ods output close;
+
+
+
+**** MODIFY THE STYLE TEMPLATE TO GET DESIRED LINES;
+ods path sashelp.tmplmst(read) work.templat;
+
+proc template;
+  define style newblue / store=work.templat; 
+  parent=styles.htmlblue;
+  
+  class graph / attrpriority='none'; 
+
+  class GraphData1 / contrastcolor=black
+                     linestyle=3;
+  class GraphData2 / contrastcolor=black
+                     linestyle=4;
+  class GraphData3 / contrastcolor=black
+                     linestyle=1;
+ end;
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods exclude none;
+ods _all_ close;
+
+**** CREATE THE PLOT DESIRED WITH PROC SGPLOT;
+ods html 
+ path="C:\figure6.9"
+ file="figure6.9.html" image_dpi=300 style=newblue;
+
+ods graphics on / reset imagename="figure6_9" outputfmt=png;
+
+**** PRODUCE SURVIVAL PLOT WITH AT RISK IN LEGEND AREA;
+proc sgplot
+  data=survivalplot;
+
+  step x=time y=survival /group=stratum;
+  scatter x=tatrisk y=stratumnum / markerchar=atrisk y2axis group=stratumnum;
+
+  xaxis values = (0 to 48 by 6) minorcount=1 label='Months from Randomization';
+  yaxis values = (0 to 1 by 0.1) minorcount=1 label='Survival Probability' offsetmin=0.2 min=0;
+  refline 0;
+  y2axis offsetmax=0.83 display=(nolabel noticks) valueattrs=(size=8) values=(1 2 3);
+
+label stratum = "Treatment";
+format stratum $trtp. stratumnum stratumnum.;
+title1 "Kaplan-Meier Survival Estimates for Death";
+run;
+
+ods graphics off;
+ods html close;
+
+
+**** PROGRAM 6.10;
+**** INPUT SAMPLE TIME TO DEATH AS CDISC ADAM ADDEATH DATA;
+data ADDEATH;
+label TRTP = "Planned Treatment"
+      AVAL = "Analysis Value" /* "Days to Death" */
+      CNSR = "Censor";
+input TRTP $ AVAL CNSR @@;
+datalines;
+A  52    0     A  825   1     C  693   1     C  981   1
+B  279   0     B  826   1     B  531   1     B  15    1
+C  1057  1     C  793   1     B  1048  1     A  925   1
+C  470   1     A  251   0     C  830   1     B  668   0
+B  350   1     B  746   1     A  122   0     B  825   1
+A  163   0     C  735   1     B  699   1     B  771   0
+C  889   1     C  932   1     C  773   0     C  767   1
+A  155   1     A  708   1     A  547   1     A  462   0
+B  114   0     B  704   1     C  1044  1     A  702   0
+A  816   1     A  100   0     C  953   1     C  632   1
+C  959   1     C  675   1     C  960   0     A  51    1
+B  33    0     B  645   1     A  56    0     A  980   0
+C  150   1     A  638   1     B  905   1     B  341   0
+B  686   1     B  638   1     A  872   0     C  1347  1
+A  659   1     A  133   0     C  360   1     A  907   0
+C  70    1     A  592   1     B  112   1     B  882   0
+A  1007  1     C  594   1     C  7     1     B  361   1
+B  964   1     C  582   1     B  1024  0     A  540   0
+C  962   1     B  282   1     C  873   1     C  1294  1
+B  961   1     C  521   1     A  268   0     A  657   1
+C  1000  1     B  9     0     A  678   1     C  989   0
+A  910   1     C  1107  1     C  1071  0     A  971   1
+C  89    1     A  1111  1     C  701   1     B  364   0
+B  442   0     B  92    0     B  1079  1     A  93    1
+B  532   0     A  1062  1     A  903   1     C  792   1
+C  136   1     C  154   1     C  845   1     B  52    1
+A  839   1     B  1076  1     A  834   0     A  589   1
+A  815   1     A  1037  1     B  832   1     C  1120  1
+C  803   1     C  16    0     A  630   1     B  546   1
+A  28    0     A  1004  1     B  1020  1     A  75    1
+C  1299  1     B  79    1     C  170   1     B  945   1
+B  1056  1     B  947   1     A  1015  1     A  190   0
+B  1026  1     C  128   0     B  940   1     C  1270  1
+A  1022  0     A  915   1     A  427   0     A  177   0
+C  127   1     B  745   0     C  834   1     B  752   1
+A  1209  1     C  154   1     B  723   1     C  1244  1
+C  5     1     A  833   1     A  705   1     B  49    1
+B  954   1     B  60    0     C  705   1     A  528   1
+A  952   1     C  776   1     B  680   1     C  88    1
+C  23    1     B  776   1     A  667   1     C  155   1
+B  946   1     A  752   1     C  1076  1     A  380   0
+B  945   1     C  722   1     A  630   1     B  61    0
+C  931   1     B  2     1     B  583   1     A  282   0
+A  103   0     C  1036  1     C  599   1     C  17    1
+C  910   1     A  760   1     B  563   1     B  347   0
+B  907   1     B  896   1     A  544   1     A  404   0
+A  8     0     A  895   1     C  525   1     C  740   1
+C  11    1     C  446   0     C  522   1     C  254   1
+A  868   1     B  774   1     A  500   1     A  27    1
+B  842   1     A  268   0     B  505   1     B  505   0
+; 
+run;
+  
+proc format;
+   value $trtp
+      "A" = "Placebo"
+      "B" = "Old Drug"
+      "C" = "New Drug";
+run;
+
+
+**** CLOSE ODS DESTINATIONS SO ONLY ONE GRAPH IS PRODUCED;
+ods _all_ close;
+
+ods html 
+path="C:\figure6.10"         
+file="figure6.10.html" image_dpi=300 style=journal;
+
+ods graphics on / reset imagename="figure6_10" outputfmt=png;
+
+
+**** CREATE KAPLAN-MEIER PLOT WITH PROC LIFETEST.;
+ods select survivalplot;
+proc lifetest
+   data = addeath
+   plots = (survival(nocensor));
+    
+   time aval * cnsr(1);
+   strata trtp;
+
+   format trtp $trtp.;
+run; 
+ 
+      
+ods html close;
+
+
+
+**** PROGRAM 8.1;
+libname sdtm "C:\sdtm_data";
+libname dm xport "C:\dm.xpt";
+
+**** PROC COPY METHOD TO CREATE A TRANSPORT FILE.;
+proc copy
+   in = sdtm
+   out = DM;
+      select DM;
+run;
+
+
+**** PROGRAM 8.2;
+***** THIS SAS MACRO CREATES A SERIES OF SAS XPORT FILES.;
+***** PARAMETERS:  libname = raw data libref;
+*****              dset    = name of data set;
+%macro makexpt(libname=, dset=);
+    
+   libname &dset xport "c:\&dset..xpt";
+
+   proc copy
+      in = &libname
+      out = &dset;
+         select &dset;
+   run;
+
+%mend makexpt;
+
+**** MAKEXPT CALLS;
+%makexpt(libname = sdtm, dset = DM)
+%makexpt(libname = sdtm, dset = AE)
+
+
+**** PROGRAM 8.3;
+libname library "c:\mytrial";
+filename tranfile 'c:\mytrial.xpt';
+
+**** COPY ALL SAS DATA SETS AND PERMANENT FORMATS FROM LIBRARY
+**** INTO MYTRIAL.XPT.;
+proc cport 
+   library = library 
+   file = tranfile
+   exclude sasmacr;
+run;
+
+
+
+
+
